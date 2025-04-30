@@ -1,9 +1,12 @@
 use asic_rs::get_miner;
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
 use tokio::task::JoinSet;
+use tokio::time::timeout;
 
 #[derive(Debug, Clone)]
 pub struct ScanResult {
@@ -104,28 +107,51 @@ impl Scanner {
                             // Spawn a task to scan this IP
                             tasks.spawn(async move {
                                 let ip_addr = IpAddr::V4(ip);
-                                let scan_result = get_miner(ip_addr).await;
+                                let sock_addr = SocketAddr::new(ip_addr, 80);
+                                let connect_timeout = Duration::from_secs(2);
 
-                                // Update results
-                                let mut results = results.lock().unwrap();
-                                if let Some(result) = results.get_mut(&ip) {
-                                    match scan_result {
-                                        Ok(miner_info) => match miner_info {
-                                            Some(miner_info) => {
-                                                result.miner = Some(format!("{:?}", miner_info));
-                                                result.status = ScanStatus::Found;
+                                // Check if port 80 is open with a timeout
+                                let port_open =
+                                    match timeout(connect_timeout, TcpStream::connect(&sock_addr))
+                                        .await
+                                    {
+                                        Ok(Ok(_stream)) => true, // Connection successful
+                                        _ => false,              // Timeout or connection error
+                                    };
+
+                                if port_open {
+                                    // Port 80 is open, proceed to get miner info
+                                    let scan_result = get_miner(ip_addr).await;
+                                    let mut results_guard = results.lock().unwrap(); // Renamed for clarity
+                                    if let Some(result) = results_guard.get_mut(&ip) {
+                                        match scan_result {
+                                            Ok(miner_info_opt) => match miner_info_opt {
+                                                // Renamed for clarity
+                                                Some(miner_info) => {
+                                                    result.miner =
+                                                        Some(format!("{:?}", miner_info));
+                                                    result.status = ScanStatus::Found;
+                                                }
+                                                None => {
+                                                    // get_miner succeeded but found no miner (maybe not an ASIC)
+                                                    result.status = ScanStatus::NotFound;
+                                                }
+                                            },
+                                            Err(e) => {
+                                                // Error occurred during get_miner
+                                                let error_msg = e.to_string();
+                                                result.status = ScanStatus::Error(error_msg);
                                             }
-                                            None => {
-                                                result.status = ScanStatus::NotFound;
-                                            }
-                                        },
-                                        Err(e) => {
-                                            let error_msg = e.to_string();
-                                            result.status = ScanStatus::Error(error_msg);
                                         }
                                     }
+                                } else {
+                                    // Port 80 is closed or unreachable
+                                    let mut results_guard = results.lock().unwrap();
+                                    if let Some(result) = results_guard.get_mut(&ip) {
+                                        result.status = ScanStatus::NotFound; // Mark as NotFound if port 80 isn't open
+                                    }
                                 }
-                                ip
+                                ip // Return the IP to satisfy the JoinSet task type
                             });
                         }
 
