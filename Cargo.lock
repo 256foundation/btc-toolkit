@@ -411,6 +411,7 @@ dependencies = [
  "asic-rs",
  "iced",
  "mimalloc",
+ "tokio",
 ]
 
 [[package]]

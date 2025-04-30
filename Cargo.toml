@@ -8,6 +8,7 @@ authors = ["Daniel Sokil <dtechtours@gmail.com>"]
 [dependencies]
 iced = "0.13"
 mimalloc = { version = "0.1", features = ["secure"] }
+tokio = { version = "1.44", features = ["full", "rt-multi-thread"] }
 asic-rs = { git = "https://github.com/b-rowan/asic-rs.git" }
 
 # https://nnethercote.github.io/perf-book/build-configuration.html

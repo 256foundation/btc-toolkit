@@ -1,4 +1,5 @@
 mod dashboard;
+mod network;
 mod network_config;
 
 use crate::dashboard::{Dashboard, DashboardMessage};
@@ -11,7 +12,8 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-fn main() -> iced::Result {
+#[tokio::main]
+async fn main() -> iced::Result {
     // Create application with title, update function, and view function
     iced::application("BTC Toolkit", update, view)
         // Configure window with custom settings
@@ -59,25 +61,39 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> iced::Task<BtcT
     match message {
         BtcToolkitMessage::ChangePage(page) => {
             state.current_page = page;
+            iced::Task::none()
         }
-        BtcToolkitMessage::Dashboard(message) => match message {
-            DashboardMessage::OpenNetworkConfig => {
-                state.current_page = Page::NetworkConfig;
-            }
-            other => state.main_page.update(other),
-        },
-        BtcToolkitMessage::NetworkConfig(message) => match message {
-            NetworkConfigMessage::Close | NetworkConfigMessage::Save => {
-                state.network_config.update(message);
-                state.current_page = Page::Dashboard;
-            }
-            other => {
-                state.network_config.update(other);
-            }
-        },
-    }
+        BtcToolkitMessage::Dashboard(message) => {
+            let task = state.main_page.update(message.clone());
 
-    iced::Task::none()
+            match message {
+                DashboardMessage::OpenNetworkConfig => {
+                    state.current_page = Page::NetworkConfig;
+                    iced::Task::none()
+                }
+                _ => task.map(BtcToolkitMessage::Dashboard),
+            }
+        }
+        BtcToolkitMessage::NetworkConfig(message) => {
+            state.network_config.update(message.clone());
+
+            match message {
+                NetworkConfigMessage::Close => {
+                    state.current_page = Page::Dashboard;
+                    iced::Task::none()
+                }
+                NetworkConfigMessage::Save => {
+                    // Pass updated config to dashboard
+                    state
+                        .main_page
+                        .set_network_config(state.network_config.clone());
+                    state.current_page = Page::Dashboard;
+                    iced::Task::none()
+                }
+                _ => iced::Task::none(),
+            }
+        }
+    }
 }
 
 // View function for the application
