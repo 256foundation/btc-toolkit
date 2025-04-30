@@ -2,6 +2,7 @@ use crate::network::scanner::{ScanResult, ScanStatus, Scanner, ScannerMessage};
 use crate::network_config::NetworkConfig;
 use iced::widget::{Space, button, column, container, row, scrollable, text};
 use iced::{Element, Length};
+use std::net::Ipv4Addr;
 
 #[derive(Debug, Clone)]
 pub enum DashboardMessage {
@@ -9,6 +10,7 @@ pub enum DashboardMessage {
     StartScan,
     StopScan,
     ScannerEvent(ScannerMessage),
+    OpenIpInBrowser(Ipv4Addr),
 }
 
 // Main page state
@@ -68,6 +70,14 @@ impl Dashboard {
                         // Other messages can be ignored since the scanner
                         // updates its internal state directly
                     }
+                }
+                iced::Task::none()
+            }
+            DashboardMessage::OpenIpInBrowser(ip) => {
+                let url = format!("http://{}", ip);
+                if let Err(e) = opener::open(&url) {
+                    eprintln!("Failed to open URL {}: {}", url, e);
+                    // Optionally, show an error message to the user in the UI
                 }
                 iced::Task::none()
             }
@@ -160,9 +170,14 @@ impl Dashboard {
                 None => String::from("-"),
             };
 
+            let ip_button = button(text(result.ip_address.to_string()))
+                .style(button::text)
+                .width(Length::FillPortion(2))
+                .on_press(DashboardMessage::OpenIpInBrowser(result.ip_address));
+
             items = items.push(
                 row![
-                    text(result.ip_address.to_string()).width(Length::FillPortion(2)),
+                    ip_button,
                     text(status_text).width(Length::FillPortion(2)),
                     text(miner_model).width(Length::FillPortion(3)),
                 ]
