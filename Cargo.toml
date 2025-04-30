@@ -9,3 +9,9 @@ authors = ["Daniel Sokil <dtechtours@gmail.com>"]
 iced = "0.13"
 mimalloc = { version = "0.1", features = ["secure"] }
 asic-rs = { git = "https://github.com/b-rowan/asic-rs.git" }
+
+# https://nnethercote.github.io/perf-book/build-configuration.html
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "symbols"
