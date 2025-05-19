@@ -9,8 +9,10 @@ authors = ["Daniel Sokil <dtechtours@gmail.com>"]
 iced = "0.13"
 opener = "0.7"
 mimalloc = { version = "0.1", features = ["secure"] }
-tokio = { version = "1.44", features = ["full", "rt-multi-thread"] }
-asic-rs = { git = "https://github.com/b-rowan/asic-rs.git" }
+tokio = { version = "1.45", features = ["full", "rt-multi-thread"] }
+# asic-rs = { git = "https://github.com/b-rowan/asic-rs.git" }
+asic-rs = { git = "https://github.com/s0kil/asic-rs.git", branch = "btminer-v3" }
+# asic-rs = { path = "/home/danielsokil/Lab/b-rowan/asic-rs" }
 
 # https://nnethercote.github.io/perf-book/build-configuration.html
 [profile.release]

@@ -1,4 +1,5 @@
 use asic_rs::get_miner;
+use asic_rs::miners::backends::traits::GetMinerData;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{Arc, Mutex};
@@ -7,6 +8,9 @@ use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
 use tokio::task::JoinSet;
 use tokio::time::timeout;
+
+const ASIC_WEB_PORT: u16 = 80;
+const TCP_CONNECT_TIMEOUT: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Clone)]
 pub struct ScanResult {
@@ -27,7 +31,6 @@ pub enum ScanStatus {
 #[derive(Debug, Clone)]
 pub enum ScannerMessage {
     ScanStarted,
-    ScanProgress(Ipv4Addr, ScanStatus),
     ScanCompleted,
 }
 
@@ -45,15 +48,19 @@ impl Scanner {
     }
 
     pub fn start_scan(&self, ip_addresses: Vec<Ipv4Addr>) -> iced::Task<ScannerMessage> {
-        // Mark scanner as running
+        if *self.running.lock().unwrap() {
+            // Scan is already in progress
+            // Consider returning a specific message or ensuring UI prevents this
+            return iced::Task::none(); // Or some other appropriate Task
+        }
+
         *self.running.lock().unwrap() = true;
 
-        // Initialize results map with pending status
         {
-            let mut results = self.results.lock().unwrap();
-            results.clear(); // Clear previous results
+            let mut results_map = self.results.lock().unwrap();
+            results_map.clear();
             for ip in &ip_addresses {
-                results.insert(
+                results_map.insert(
                     *ip,
                     ScanResult {
                         ip_address: *ip,
@@ -64,117 +71,116 @@ impl Scanner {
             }
         }
 
-        // Clone references for the task
-        let results = Arc::clone(&self.results);
-        let running = Arc::clone(&self.running);
+        let results_arc = Arc::clone(&self.results);
+        let running_arc = Arc::clone(&self.running);
+        // ip_addresses needs to be available to the block_on scope
+        // Clone it if the original Vec is still needed elsewhere, or move it.
+        // For iced::Task::perform, it's often moved.
+        let ip_addresses_clone = ip_addresses; // Assuming ip_addresses is moved into the perform task
 
         iced::Task::perform(
             async move {
-                // Create a dedicated runtime for the scan
-                let rt = Runtime::new().unwrap();
+                // Create a dedicated Tokio runtime for the scanning operations.
+                let rt = match Runtime::new() {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!("Failed to create Tokio runtime for scanner: {}", e);
+                        // Propagate an error or complete with no results
+                        // This requires a way to signal error if ScannerMessage doesn't support it.
+                        // For now, let's assume it completes but results might reflect the failure implicitly.
+                        *running_arc.lock().unwrap() = false; // Ensure running state is reset
+                        return ScannerMessage::ScanCompleted; // Or a new error message type
+                    }
+                };
 
+                // Use block_on to execute the scanning logic within this runtime.
+                // ip_addresses_clone is moved into this block_on call.
                 rt.block_on(async {
-                    // Create a set to track all spawned tasks
                     let mut tasks = JoinSet::new();
+                    const MAX_CONCURRENT_SCANS: usize = 20;
+                    // ip_queue now takes ownership from ip_addresses_clone
+                    let mut ip_queue = ip_addresses_clone;
 
-                    // Maximum number of concurrent scans
-                    const MAX_CONCURRENT: usize = 20;
-
-                    // Queue for tracking IPs being processed
-                    let mut queue = ip_addresses;
-
-                    // Process IPs until queue is empty
-                    while !queue.is_empty() || !tasks.is_empty() {
-                        // Fill the task set up to the concurrency limit
-                        while tasks.len() < MAX_CONCURRENT && !queue.is_empty() {
-                            if !*running.lock().unwrap() {
-                                break;
-                            }
-
-                            let ip = queue.remove(0);
-
-                            // Mark as scanning
-                            {
-                                let mut results = results.lock().unwrap();
-                                if let Some(result) = results.get_mut(&ip) {
-                                    result.status = ScanStatus::Scanning;
-                                }
-                            }
-
-                            // Clone references for the task
-                            let results = Arc::clone(&results);
-
-                            // Spawn a task to scan this IP
-                            tasks.spawn(async move {
-                                let ip_addr = IpAddr::V4(ip);
-                                let sock_addr = SocketAddr::new(ip_addr, 80);
-                                let connect_timeout = Duration::from_secs(2);
-
-                                // Check if port 80 is open with a timeout
-                                let port_open =
-                                    match timeout(connect_timeout, TcpStream::connect(&sock_addr))
-                                        .await
+                    while !tasks.is_empty()
+                        || (*running_arc.lock().unwrap() && !ip_queue.is_empty())
+                    {
+                        if *running_arc.lock().unwrap() {
+                            while tasks.len() < MAX_CONCURRENT_SCANS && !ip_queue.is_empty() {
+                                let ip_to_scan = ip_queue.remove(0);
+                                {
+                                    let mut results_map_guard = results_arc.lock().unwrap();
+                                    if let Some(result_entry) =
+                                        results_map_guard.get_mut(&ip_to_scan)
                                     {
-                                        Ok(Ok(_stream)) => true, // Connection successful
-                                        _ => false,              // Timeout or connection error
+                                        result_entry.status = ScanStatus::Scanning;
+                                    }
+                                }
+
+                                tasks.spawn(async move {
+                                    let ip_addr = IpAddr::V4(ip_to_scan);
+                                    let sock_addr = SocketAddr::new(ip_addr, ASIC_WEB_PORT);
+                                    let port_open = match timeout(
+                                        TCP_CONNECT_TIMEOUT,
+                                        TcpStream::connect(&sock_addr),
+                                    )
+                                    .await
+                                    {
+                                        Ok(Ok(_)) => true,
+                                        _ => false,
                                     };
 
-                                if port_open {
-                                    // Port 80 is open, proceed to get miner info
-                                    let scan_result = get_miner(ip_addr).await;
-                                    let mut results_guard = results.lock().unwrap(); // Renamed for clarity
-                                    if let Some(result) = results_guard.get_mut(&ip) {
-                                        match scan_result {
-                                            Ok(miner_info_opt) => match miner_info_opt {
-                                                // Renamed for clarity
-                                                Some(miner_info) => {
-                                                    result.miner =
-                                                        Some(format!("{:?}", miner_info));
-                                                    result.status = ScanStatus::Found;
-                                                }
-                                                None => {
-                                                    // get_miner succeeded but found no miner (maybe not an ASIC)
-                                                    result.status = ScanStatus::NotFound;
-                                                }
-                                            },
-                                            Err(e) => {
-                                                // Error occurred during get_miner
-                                                let error_msg = e.to_string();
-                                                result.status = ScanStatus::Error(error_msg);
+                                    let (status, miner_info) = if port_open {
+                                        match get_miner(ip_addr).await {
+                                            Ok(Some(miner_instance)) => {
+                                                let miner_data = miner_instance.get_data().await;
+                                                (
+                                                    ScanStatus::Found,
+                                                    Some(format!(
+                                                        "{:?}",
+                                                        miner_data.device_info.model
+                                                    )),
+                                                )
                                             }
+                                            Ok(None) => (ScanStatus::NotFound, None),
+                                            Err(e) => (
+                                                ScanStatus::Error(format!(
+                                                    "Discovery failed: {}",
+                                                    e
+                                                )),
+                                                None,
+                                            ),
                                         }
-                                    }
-                                } else {
-                                    // Port 80 is closed or unreachable
-                                    let mut results_guard = results.lock().unwrap();
-                                    if let Some(result) = results_guard.get_mut(&ip) {
-                                        result.status = ScanStatus::NotFound; // Mark as NotFound if port 80 isn't open
+                                    } else {
+                                        (ScanStatus::NotFound, None)
+                                    };
+                                    (ip_to_scan, status, miner_info)
+                                });
+                            }
+                        }
+
+                        if let Some(task_join_result) = tasks.join_next().await {
+                            match task_join_result {
+                                Ok((processed_ip, status, miner_info)) => {
+                                    let mut results_map_guard = results_arc.lock().unwrap();
+                                    if let Some(entry) = results_map_guard.get_mut(&processed_ip) {
+                                        entry.status = status;
+                                        entry.miner = miner_info;
                                     }
                                 }
-                                ip // Return the IP to satisfy the JoinSet task type
-                            });
-                        }
-
-                        // Stop if scanning was cancelled
-                        if !*running.lock().unwrap() {
+                                Err(join_err) => {
+                                    eprintln!("A scan task panicked: {:?}", join_err);
+                                }
+                            }
+                        } else if ip_queue.is_empty() && !*running_arc.lock().unwrap() {
                             break;
                         }
-
-                        // Wait for any task to complete
-                        if let Some(result) = tasks.join_next().await {
-                            // Just acknowledge completion - results are updated via shared state
-                            let _ = result;
-                        }
                     }
-                });
+                }); // End of rt.block_on
 
-                // Mark scanner as not running
-                *running.lock().unwrap() = false;
-
-                // Return completion message
+                *running_arc.lock().unwrap() = false;
                 ScannerMessage::ScanCompleted
             },
-            |msg| msg,
+            |message| message,
         )
     }
 
@@ -191,6 +197,7 @@ impl Scanner {
     }
 
     pub fn clear_results(&self) {
-        self.results.lock().unwrap().clear();
+        let mut results_map = self.results.lock().unwrap();
+        results_map.clear();
     }
 }

@@ -136,12 +136,21 @@ impl Dashboard {
     fn view_scan_results(&self) -> Element<DashboardMessage> {
         let results = self.scanner.get_results();
 
-        if results.is_empty() {
+        // Sort results by IP address for consistent display
+        let mut sorted_results: Vec<ScanResult> = results.values().cloned().collect();
+        sorted_results.sort_by_key(|r| r.ip_address);
+
+        let filtered_results: Vec<ScanResult> = sorted_results
+            .into_iter()
+            .filter(|result| result.status != ScanStatus::NotFound)
+            .collect();
+
+        if filtered_results.is_empty() {
             return Space::new(Length::Fill, Length::Fixed(0.0)).into();
         }
 
         let mut items = column![
-            text("Scan Results").size(20),
+            text(format!("Found {} miners", filtered_results.len())).size(20),
             row![
                 text("IP Address").width(Length::FillPortion(2)),
                 text("Status").width(Length::FillPortion(2)),
@@ -152,11 +161,7 @@ impl Dashboard {
         ]
         .spacing(10);
 
-        // Sort results by IP address for consistent display
-        let mut sorted_results: Vec<ScanResult> = results.values().cloned().collect();
-        sorted_results.sort_by_key(|r| r.ip_address);
-
-        for result in sorted_results {
+        for result in filtered_results {
             let status_text = match result.status {
                 ScanStatus::Found => String::from("Found"),
                 ScanStatus::NotFound => String::from("Not Found"),

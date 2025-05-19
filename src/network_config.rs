@@ -19,7 +19,7 @@ pub enum NetworkConfigMessage {
 impl NetworkConfig {
     pub fn new() -> Self {
         Self {
-            ip_range: String::from("192.1.1.1-50"),
+            ip_range: String::from("192.30.1.1-253"),
             ip_addresses: Vec::new(),
         }
     }
@@ -50,7 +50,7 @@ impl NetworkConfig {
 
         let input_row = row![
             text("IP Range:").width(Length::Fixed(100.0)),
-            text_input("e.g. 192.168.1.0/24", &self.ip_range)
+            text_input("e.g. 192.30.1.1-253", &self.ip_range)
                 .on_input(NetworkConfigMessage::SetIpRange)
                 .padding(8)
         ]
