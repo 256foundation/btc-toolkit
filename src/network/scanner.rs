@@ -130,7 +130,7 @@ impl Scanner {
                                     };
 
                                     let (status, miner_info) = if port_open {
-                                        match get_miner(ip_addr).await {
+                                        match get_miner(ip_addr).await.map_err(|e| e.to_string()) {
                                             Ok(Some(miner_instance)) => {
                                                 let miner_data = miner_instance.get_data().await;
                                                 (
@@ -142,10 +142,10 @@ impl Scanner {
                                                 )
                                             }
                                             Ok(None) => (ScanStatus::NotFound, None),
-                                            Err(e) => (
+                                            Err(error_msg) => (
                                                 ScanStatus::Error(format!(
                                                     "Discovery failed: {}",
-                                                    e
+                                                    error_msg
                                                 )),
                                                 None,
                                             ),
