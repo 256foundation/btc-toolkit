@@ -1,7 +1,8 @@
-use crate::network::scanner::{ScanResult, ScanStatus, Scanner, ScannerMessage};
+use crate::network::scanner::{MinerInfo, Scanner};
 use crate::network_config::NetworkConfig;
 use iced::widget::{Space, button, column, container, row, scrollable, text};
 use iced::{Element, Length};
+use std::collections::HashMap;
 use std::net::Ipv4Addr;
 
 #[derive(Debug, Clone)]
@@ -9,8 +10,8 @@ pub enum DashboardMessage {
     OpenNetworkConfig,
     StartScan,
     StopScan,
-    ScannerEvent(ScannerMessage),
     OpenIpInBrowser(Ipv4Addr),
+    NavigateToScanning(String, usize), // IP range and total count
 }
 
 // Main page state
@@ -37,48 +38,35 @@ impl Dashboard {
             }
             DashboardMessage::StartScan => {
                 if !self.scanning {
-                    self.scanning = true;
+                    // Calculate total IPs to scan (simplified estimation)
+                    let network_range = self.network_config.get_range();
+                    let total_ips = self.estimate_ip_count(network_range);
 
-                    // Clear previous results
-                    self.scanner.clear_results();
-
-                    // Get IPs from network config
-                    let ip_addresses = self.network_config.get_parsed_ips();
-
-                    // Start the scan - this will update the scanner's internal state
-                    // which will be displayed in the UI in real-time
-                    self.scanner
-                        .start_scan(ip_addresses)
-                        .map(DashboardMessage::ScannerEvent)
+                    // Create navigation message to scanning view
+                    iced::Task::done(DashboardMessage::NavigateToScanning(
+                        network_range.to_string(),
+                        total_ips,
+                    ))
                 } else {
                     iced::Task::none()
                 }
             }
             DashboardMessage::StopScan => {
-                if self.scanning {
-                    self.scanning = false;
-                    self.scanner.stop_scan();
-                }
+                // Note: The new scanner doesn't support stopping mid-scan
+                self.scanning = false;
                 iced::Task::none()
             }
-            DashboardMessage::ScannerEvent(scanner_msg) => {
-                match scanner_msg {
-                    ScannerMessage::ScanCompleted => {
-                        self.scanning = false;
-                    }
-                    _ => {
-                        // Other messages can be ignored since the scanner
-                        // updates its internal state directly
-                    }
-                }
-                iced::Task::none()
-            }
+
             DashboardMessage::OpenIpInBrowser(ip) => {
-                let url = format!("http://{}", ip);
+                let url = format!("http://{ip}");
                 if let Err(e) = opener::open(&url) {
-                    eprintln!("Failed to open URL {}: {}", url, e);
+                    eprintln!("Failed to open URL {url}: {e}");
                     // Optionally, show an error message to the user in the UI
                 }
+                iced::Task::none()
+            }
+            DashboardMessage::NavigateToScanning(_, _) => {
+                // This should be handled at the application level
                 iced::Task::none()
             }
         }
@@ -86,6 +74,40 @@ impl Dashboard {
 
     pub fn set_network_config(&mut self, network_config: NetworkConfig) {
         self.network_config = network_config;
+    }
+
+    /// Set scan results from external source (e.g., scanning view)
+    pub fn set_scan_results(&mut self, results: HashMap<Ipv4Addr, MinerInfo>) {
+        self.scanner.set_results_from_map(results);
+    }
+
+    /// Estimate the number of IPs to scan based on the range
+    fn estimate_ip_count(&self, range: &str) -> usize {
+        if range.contains('/') {
+            // CIDR notation, e.g., "192.168.1.0/24" = 254 IPs
+            if let Some(prefix_len) = range.split('/').nth(1) {
+                if let Ok(prefix) = prefix_len.parse::<u8>() {
+                    let host_bits = 32 - prefix;
+                    let total_ips = 2_usize.pow(host_bits as u32);
+                    // Subtract network and broadcast addresses
+                    return total_ips.saturating_sub(2).max(1);
+                }
+            }
+        } else if range.contains('-') {
+            // Range notation, e.g., "192.168.1.1-100" = 100 IPs
+            let parts: Vec<&str> = range.split('-').collect();
+            if parts.len() == 2 {
+                if let Ok(end) = parts[1].parse::<u8>() {
+                    if let Some(start_part) = parts[0].split('.').next_back() {
+                        if let Ok(start) = start_part.parse::<u8>() {
+                            return (end.saturating_sub(start) + 1) as usize;
+                        }
+                    }
+                }
+            }
+        }
+        // Default fallback
+        254
     }
 
     pub fn view(&self) -> Element<DashboardMessage> {
@@ -136,55 +158,42 @@ impl Dashboard {
     fn view_scan_results(&self) -> Element<DashboardMessage> {
         let results = self.scanner.get_results();
 
-        // Sort results by IP address for consistent display
-        let mut sorted_results: Vec<ScanResult> = results.values().cloned().collect();
-        sorted_results.sort_by_key(|r| r.ip_address);
-
-        let filtered_results: Vec<ScanResult> = sorted_results
-            .into_iter()
-            .filter(|result| result.status != ScanStatus::NotFound)
-            .collect();
-
-        if filtered_results.is_empty() {
+        if results.is_empty() {
             return Space::new(Length::Fill, Length::Fixed(0.0)).into();
         }
 
+        // Sort results by IP address for consistent display
+        let mut sorted_miners: Vec<&MinerInfo> = results.values().collect();
+        sorted_miners.sort_by_key(|m| m.ip);
+
         let mut items = column![
-            text(format!("Found {} miners", filtered_results.len())).size(20),
+            text(format!("Found {} miners", sorted_miners.len())).size(20),
             row![
                 text("IP Address").width(Length::FillPortion(2)),
-                text("Status").width(Length::FillPortion(2)),
-                text("Miner Model").width(Length::FillPortion(3)),
+                text("Model").width(Length::FillPortion(2)),
+                text("Make").width(Length::FillPortion(2)),
+                text("Firmware").width(Length::FillPortion(2)),
             ]
             .spacing(10)
             .padding([0, 10])
         ]
         .spacing(10);
 
-        for result in filtered_results {
-            let status_text = match result.status {
-                ScanStatus::Found => String::from("Found"),
-                ScanStatus::NotFound => String::from("Not Found"),
-                ScanStatus::Scanning => String::from("Scanning..."),
-                ScanStatus::Pending => String::from("Pending"),
-                ScanStatus::Error(err) => err,
-            };
+        for miner in sorted_miners {
+            let make_text = miner.make.as_deref().unwrap_or("Unknown");
+            let firmware_text = miner.firmware.as_deref().unwrap_or("Unknown");
 
-            let miner_model = match result.miner {
-                Some(m) => m,
-                None => String::from("-"),
-            };
-
-            let ip_button = button(text(result.ip_address.to_string()))
+            let ip_button = button(text(miner.ip.to_string()))
                 .style(button::text)
                 .width(Length::FillPortion(2))
-                .on_press(DashboardMessage::OpenIpInBrowser(result.ip_address));
+                .on_press(DashboardMessage::OpenIpInBrowser(miner.ip));
 
             items = items.push(
                 row![
                     ip_button,
-                    text(status_text).width(Length::FillPortion(2)),
-                    text(miner_model).width(Length::FillPortion(3)),
+                    text(&miner.model).width(Length::FillPortion(2)),
+                    text(make_text).width(Length::FillPortion(2)),
+                    text(firmware_text).width(Length::FillPortion(2)),
                 ]
                 .spacing(10)
                 .padding(5),

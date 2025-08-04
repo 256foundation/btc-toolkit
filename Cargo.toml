@@ -10,7 +10,7 @@ iced = "0.13"
 opener = "0.7"
 mimalloc = { version = "0.1", features = ["secure"] }
 tokio = { version = "1.45", features = ["full", "rt-multi-thread"] }
-asic-rs = { git = "https://github.com/b-rowan/asic-rs.git", branch = "master" }
+asic-rs = { git = "https://github.com/256-Foundation/asic-rs", branch = "master" }
 
 # https://nnethercote.github.io/perf-book/build-configuration.html
 [profile.release]
