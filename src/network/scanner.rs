@@ -6,7 +6,7 @@ use asic_rs::{
     miners::factory::MinerFactory,
 };
 use iced::{
-    futures::{SinkExt, StreamExt},
+    futures::{SinkExt, StreamExt, future},
     stream,
 };
 use tokio::runtime::Runtime;
@@ -64,36 +64,47 @@ impl Scanner {
         )
     }
 
-    /// Create a stream that scans multiple groups sequentially with streaming
+    /// Create a stream that scans multiple groups in parallel with streaming
     fn scan_multiple_groups_stream(
         groups: Vec<ScanGroup>,
     ) -> impl iced::futures::Stream<Item = ScannerMessage> {
         stream::channel(100, |mut output| async move {
+            use future::join_all;
+
             let total_groups = groups.len();
 
-            // Scan groups sequentially to avoid runtime issues
-            for (index, group) in groups.into_iter().enumerate() {
-                // Send group completion based on scan result
-                let result = Self::perform_realtime_scan(
-                    &group.network_range,
-                    &group.config,
-                    &mut output,
-                    &group.name,
-                )
-                .await;
+            if total_groups == 0 {
+                let _ = output.send(ScannerMessage::AllScansCompleted).await;
+                std::future::pending::<()>().await;
+                return;
+            }
 
-                let _ = output
-                    .send(ScannerMessage::GroupScanCompleted {
-                        group_name: group.name,
-                        result,
-                    })
+            // Create futures for all group scans to run in parallel
+            let scan_futures = groups.into_iter().map(|group| {
+                let mut output_clone = output.clone();
+                let group_name = group.name.clone();
+
+                async move {
+                    let result = Self::perform_realtime_scan(
+                        &group.network_range,
+                        &group.config,
+                        &mut output_clone,
+                        &group.name,
+                    )
                     .await;
 
-                // Send completion after all groups are done
-                if index + 1 == total_groups {
-                    let _ = output.send(ScannerMessage::AllScansCompleted).await;
+                    // Send group completion
+                    let _ = output_clone
+                        .send(ScannerMessage::GroupScanCompleted { group_name, result })
+                        .await;
                 }
-            }
+            });
+
+            // Execute all group scans in parallel
+            join_all(scan_futures).await;
+
+            // Send completion after all groups are done
+            let _ = output.send(ScannerMessage::AllScansCompleted).await;
 
             // Keep the stream alive until the subscription is dropped
             std::future::pending::<()>().await;
