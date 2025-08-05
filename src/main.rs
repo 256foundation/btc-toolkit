@@ -50,7 +50,7 @@ struct BtcToolkit {
     main_page: Dashboard,
     network_config: NetworkConfig,
     scanning_view: Option<ScanningView>,
-    active_scan: Option<Vec<(String, String, crate::network::scanner::ScanConfig)>>, // Vec of (group_name, ip_range, config)
+    active_scan: Option<Vec<crate::network::scanner::ScanGroup>>,
     app_config: AppConfig,
 }
 
@@ -113,17 +113,16 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> iced::Task<BtcT
                     state.current_page = Page::Scanning;
 
                     // Set active scan for subscription - collect all enabled groups
-                    let active_scans: Vec<(String, String, crate::network::scanner::ScanConfig)> =
-                        enabled_groups
-                            .into_iter()
-                            .map(|group| {
-                                (
-                                    group.name.clone(),
-                                    group.network_range.clone(),
-                                    group.scan_config.clone(),
-                                )
-                            })
-                            .collect();
+                    let active_scans: Vec<crate::network::scanner::ScanGroup> = enabled_groups
+                        .into_iter()
+                        .map(|group| {
+                            crate::network::scanner::ScanGroup::new(
+                                group.name.clone(),
+                                group.network_range.clone(),
+                                group.scan_config.clone(),
+                            )
+                        })
+                        .collect();
 
                     state.active_scan = if active_scans.is_empty() {
                         None
