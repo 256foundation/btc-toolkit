@@ -141,14 +141,11 @@ impl Dashboard {
             Space::new(Length::Fill, Length::Fixed(0.0)),
             // System status indicator
             container(
-                row![
-                    text("🟢").size(16),
-                    theme::typography::body("System Online")
-                ]
-                .spacing(theme::layout::SPACING_XS)
-                .align_y(iced::alignment::Vertical::Center)
+                row![theme::typography::body("System Online")]
+                    .spacing(theme::layout::SPACING_XS)
+                    .align_y(iced::alignment::Vertical::Center)
             )
-            .style(iced::widget::container::rounded_box)
+            .style(theme::container_styles::card)
             .padding([theme::layout::PADDING_XS, theme::layout::PADDING_SM])
         ]
         .align_y(iced::alignment::Vertical::Center);
@@ -181,8 +178,9 @@ impl Dashboard {
                 .align_x(iced::alignment::Horizontal::Center)
                 .spacing(theme::layout::SPACING_XS)
             )
-            .style(iced::widget::container::rounded_box)
+            .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_MD)
+            .align_x(iced::alignment::Horizontal::Center)
             .width(Length::FillPortion(1)),
             // IP ranges card
             container(
@@ -194,8 +192,9 @@ impl Dashboard {
                 .align_x(iced::alignment::Horizontal::Center)
                 .spacing(theme::layout::SPACING_XS)
             )
-            .style(iced::widget::container::rounded_box)
+            .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_MD)
+            .align_x(iced::alignment::Horizontal::Center)
             .width(Length::FillPortion(1)),
             // Discovered miners card
             container(
@@ -207,14 +206,15 @@ impl Dashboard {
                 .align_x(iced::alignment::Horizontal::Center)
                 .spacing(theme::layout::SPACING_XS)
             )
-            .style(iced::widget::container::rounded_box)
+            .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_MD)
+            .align_x(iced::alignment::Horizontal::Center)
             .width(Length::FillPortion(1)),
             // Scan status card
             container(
                 column![
-                    text(if self.scanning { "🔄" } else { "⏸️" }).size(24),
-                    theme::typography::small(if self.scanning { "Scanning" } else { "Ready" }),
+                    theme::typography::mono_large(if self.scanning { "Scanning" } else { "Ready" }),
+                    theme::typography::small("Status"),
                     theme::typography::tiny(if self.scanning { "in progress" } else { "idle" })
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
@@ -225,6 +225,7 @@ impl Dashboard {
             } else {
                 theme::container_styles::card
             })
+            .align_x(iced::alignment::Horizontal::Center)
             .padding(theme::layout::PADDING_MD)
             .width(Length::FillPortion(1))
         ]
@@ -238,7 +239,7 @@ impl Dashboard {
         let enabled_groups = self.app_config.get_enabled_groups();
 
         let panel_header = row![
-            theme::typography::heading("🔧 Control Panel"),
+            theme::typography::heading("Control Panel"),
             Space::new(Length::Fill, Length::Fixed(0.0))
         ];
 
@@ -246,8 +247,9 @@ impl Dashboard {
             // Configuration button
             button(
                 row![
-                    text("⚙️").size(16),
                     theme::typography::body("Configure Groups")
+                        .align_x(iced::alignment::Horizontal::Center)
+                        .width(Length::Fill)
                 ]
                 .spacing(theme::layout::SPACING_SM)
                 .align_y(iced::alignment::Vertical::Center)
@@ -259,22 +261,26 @@ impl Dashboard {
             // Scan button
             {
                 if enabled_groups.is_empty() {
-                    button(theme::typography::body("❌ No Groups Enabled"))
+                    button(theme::typography::body("No Groups Enabled"))
                         .style(iced::widget::button::secondary)
                         .padding(theme::layout::PADDING_SM)
                         .width(Length::Fill)
                 } else if self.scanning {
-                    button(theme::typography::body("⏹️ Stop Scan"))
+                    button(theme::typography::body("Stop Scan"))
                         .style(iced::widget::button::danger)
                         .padding(theme::layout::PADDING_SM)
                         .width(Length::Fill)
                         .on_press(DashboardMessage::StopScan)
                 } else {
-                    button(theme::typography::body("▶️ Start Scan"))
-                        .style(iced::widget::button::primary)
-                        .padding(theme::layout::PADDING_SM)
-                        .width(Length::Fill)
-                        .on_press(DashboardMessage::StartScan)
+                    button(
+                        theme::typography::body("Start Scan")
+                            .align_x(iced::alignment::Horizontal::Center)
+                            .width(Length::Fill),
+                    )
+                    .style(iced::widget::button::primary)
+                    .padding(theme::layout::PADDING_SM)
+                    .width(Length::Fill)
+                    .on_press(DashboardMessage::StartScan)
                 }
             }
         ]
@@ -319,7 +325,6 @@ impl Dashboard {
         if self.app_config.scan_groups.is_empty() {
             return container(
                 column![
-                    text("📁").size(32),
                     theme::typography::body("No scan groups configured"),
                     theme::typography::small("Use 'Configure Groups' to add network ranges")
                 ]
@@ -335,18 +340,14 @@ impl Dashboard {
         let mut groups_list = column![].spacing(theme::layout::SPACING_SM);
 
         for group in &self.app_config.scan_groups {
-            let status_icon = if group.enabled { "🟢" } else { "🔴" };
             let estimated_ips = self.estimate_ip_count(&group.network_range);
 
             let group_card = container(
                 row![
                     column![
-                        row![
-                            text(status_icon).size(14),
-                            theme::typography::body(&group.name)
-                        ]
-                        .spacing(theme::layout::SPACING_XS)
-                        .align_y(iced::alignment::Vertical::Center),
+                        row![theme::typography::body(&group.name)]
+                            .spacing(theme::layout::SPACING_XS)
+                            .align_y(iced::alignment::Vertical::Center),
                         theme::typography::mono(&group.network_range),
                         theme::typography::tiny(format!("~{estimated_ips} IPs"))
                     ]
@@ -367,7 +368,7 @@ impl Dashboard {
                 .align_y(iced::alignment::Vertical::Center)
                 .spacing(theme::layout::SPACING_SM),
             )
-            .style(iced::widget::container::rounded_box)
+            .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_SM)
             .width(Length::Fill);
 
@@ -390,7 +391,6 @@ impl Dashboard {
         if all_results.is_empty() {
             return container(
                 column![
-                    text("⛏️").size(32),
                     theme::typography::body("No miners discovered yet"),
                     theme::typography::small("Run a scan to find ASIC miners on your network")
                 ]
@@ -410,13 +410,13 @@ impl Dashboard {
         // Header with summary
         let summary_header = container(row![
             column![
-                theme::typography::heading(format!("⛏️ {total_miners} Miners Online")),
+                theme::typography::heading(format!("{total_miners} Miners Online")),
                 theme::typography::small(format!("Across {} groups", all_results.len()))
             ]
             .spacing(theme::layout::SPACING_XS),
             Space::new(Length::Fill, Length::Fixed(0.0))
         ])
-        .style(iced::widget::container::rounded_box)
+        .style(theme::container_styles::card)
         .padding(theme::layout::PADDING_MD)
         .width(Length::Fill);
 
@@ -474,11 +474,11 @@ impl Dashboard {
                             .padding(theme::layout::PADDING_XS)
                             .width(Length::FillPortion(3))
                             .on_press(DashboardMessage::OpenIpInBrowser(miner_ip)),
-                        theme::typography::body(&format!("{:?}", miner.device_info.model))
+                        theme::typography::body(format!("{:?}", miner.device_info.model))
                             .width(Length::FillPortion(3)),
-                        theme::typography::body(&format!("{:?}", miner.device_info.make))
+                        theme::typography::body(format!("{:?}", miner.device_info.make))
                             .width(Length::FillPortion(2)),
-                        theme::typography::body(&format!("{:?}", miner.device_info.firmware))
+                        theme::typography::body(format!("{:?}", miner.device_info.firmware))
                             .width(Length::FillPortion(2)),
                     ]
                     .spacing(theme::layout::SPACING_SM)
