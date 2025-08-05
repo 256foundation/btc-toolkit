@@ -242,18 +242,15 @@ impl NetworkConfig {
         let header = container(
             row![
                 column![
-                    theme::typography::title("⚙️ Network Configuration"),
+                    theme::typography::title("Network Configuration"),
                     theme::typography::small("Configure scan groups for ASIC miner discovery")
                 ]
                 .spacing(theme::layout::SPACING_XS),
                 Space::new(Length::Fill, Length::Fixed(0.0)),
                 button(
-                    row![
-                        text("➕").size(16),
-                        theme::typography::body("Add New Group")
-                    ]
-                    .spacing(theme::layout::SPACING_SM)
-                    .align_y(iced::alignment::Vertical::Center)
+                    row![text("+").size(16), theme::typography::body("Add New Group")]
+                        .spacing(theme::layout::SPACING_SM)
+                        .align_y(iced::alignment::Vertical::Center)
                 )
                 .style(iced::widget::button::primary)
                 .padding(theme::layout::PADDING_SM)
@@ -269,7 +266,6 @@ impl NetworkConfig {
         let groups_content = if self.app_config.scan_groups.is_empty() {
             container(
                 column![
-                    text("📁").size(48),
                     theme::typography::heading("No Scan Groups Configured"),
                     theme::typography::body(
                         "Create your first scan group to start discovering miners"
@@ -277,7 +273,7 @@ impl NetworkConfig {
                     Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_MD)),
                     button(
                         row![
-                            text("➕").size(16),
+                            text("+").size(16),
                             theme::typography::body("Create First Group")
                         ]
                         .spacing(theme::layout::SPACING_SM)
@@ -334,7 +330,7 @@ impl NetworkConfig {
                         .width(Length::Fill),
                         column![
                             button(
-                                row![text("✏️").size(14), theme::typography::small("Edit")]
+                                row![theme::typography::small("Edit")]
                                     .spacing(theme::layout::SPACING_XS)
                                     .align_y(iced::alignment::Vertical::Center)
                             )
@@ -343,7 +339,7 @@ impl NetworkConfig {
                             .width(theme::layout::BUTTON_WIDTH)
                             .on_press(NetworkConfigMessage::EditGroup(group.name.clone())),
                             button(
-                                row![text("🗑️").size(14), theme::typography::small("Delete")]
+                                row![theme::typography::small("Delete")]
                                     .spacing(theme::layout::SPACING_XS)
                                     .align_y(iced::alignment::Vertical::Center)
                             )
@@ -357,7 +353,7 @@ impl NetworkConfig {
                     .spacing(theme::layout::SPACING_MD)
                     .align_y(iced::alignment::Vertical::Center),
                 )
-                .style(iced::widget::container::rounded_box)
+                .style(theme::container_styles::card)
                 .padding(theme::layout::PADDING_MD)
                 .width(Length::Fill);
 
@@ -372,19 +368,23 @@ impl NetworkConfig {
         let action_buttons = container(
             row![
                 button(
-                    row![text("❌").size(16), theme::typography::body("Cancel")]
-                        .spacing(theme::layout::SPACING_SM)
-                        .align_y(iced::alignment::Vertical::Center)
+                    row![
+                        theme::typography::body("Cancel")
+                            .align_x(iced::alignment::Horizontal::Center)
+                            .width(Length::Fill)
+                    ]
+                    .spacing(theme::layout::SPACING_SM)
+                    .align_y(iced::alignment::Vertical::Center)
                 )
                 .style(iced::widget::button::secondary)
                 .padding(theme::layout::PADDING_SM)
-                .width(theme::layout::BUTTON_WIDTH)
                 .on_press(NetworkConfigMessage::Close),
                 Space::new(Length::Fill, Length::Fixed(0.0)),
                 button(
                     row![
-                        text("💾").size(16),
                         theme::typography::body("Save Configuration")
+                            .align_x(iced::alignment::Horizontal::Center)
+                            .width(Length::Fill)
                     ]
                     .spacing(theme::layout::SPACING_SM)
                     .align_y(iced::alignment::Vertical::Center)
@@ -412,9 +412,9 @@ impl NetworkConfig {
 
         let is_editing = editing.original_name.is_some();
         let title_text = if is_editing {
-            "✏️ Edit Scan Group"
+            "Edit Scan Group"
         } else {
-            "➕ Add New Scan Group"
+            "Add New Scan Group"
         };
 
         // Header section
@@ -437,126 +437,147 @@ impl NetworkConfig {
         // Basic configuration form
         let basic_config = container(
             column![
-                theme::typography::heading("🔧 Basic Configuration"),
-                Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_MD)),
+                theme::typography::heading("Basic Configuration"),
                 // Group name input
-                row![
-                    theme::typography::body("Group Name:").width(theme::layout::LABEL_WIDTH),
-                    text_input("e.g. Farm A", &editing.name)
-                        .style(theme::text_input_styles::default)
-                        .on_input(NetworkConfigMessage::SetGroupName)
-                        .padding(theme::layout::PADDING_SM)
-                        .width(theme::layout::INPUT_WIDTH)
-                ]
-                .spacing(theme::layout::SPACING_MD)
-                .align_y(iced::alignment::Vertical::Center),
+                container(
+                    row![
+                        theme::typography::body("Group Name:").width(theme::layout::LABEL_WIDTH),
+                        text_input("e.g. Farm A", &editing.name)
+                            .style(theme::text_input_styles::default)
+                            .on_input(NetworkConfigMessage::SetGroupName)
+                            .padding(theme::layout::PADDING_SM)
+                            .width(Length::Fill)
+                    ]
+                    .spacing(theme::layout::SPACING_MD)
+                    .align_y(iced::alignment::Vertical::Center)
+                )
+                .style(theme::container_styles::card)
+                .padding(theme::layout::PADDING_MD)
+                .width(Length::Fill),
                 // IP range input
-                row![
-                    theme::typography::body("IP Range:").width(theme::layout::LABEL_WIDTH),
-                    text_input("e.g. 192.168.1.0/24", &editing.network_range)
-                        .style(theme::text_input_styles::default)
-                        .on_input(NetworkConfigMessage::SetGroupNetworkRange)
-                        .padding(theme::layout::PADDING_SM)
-                        .width(theme::layout::INPUT_WIDTH)
-                ]
-                .spacing(theme::layout::SPACING_MD)
-                .align_y(iced::alignment::Vertical::Center),
+                container(column![
+                    row![
+                        theme::typography::body("IP Range:").width(theme::layout::LABEL_WIDTH),
+                        text_input("e.g. 192.168.1.0/24", &editing.network_range)
+                            .style(theme::text_input_styles::default)
+                            .on_input(NetworkConfigMessage::SetGroupNetworkRange)
+                            .padding(theme::layout::PADDING_SM)
+                            .width(Length::Fill)
+                    ]
+                    .spacing(theme::layout::SPACING_MD)
+                    .align_y(iced::alignment::Vertical::Center),
+                    Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_MD)),
+                    theme::typography::small(
+                        "Supports CIDR notation (192.168.1.0/24) or IP ranges (192.168.1.1-100)"
+                    )
+                ])
+                .style(theme::container_styles::card)
+                .padding(theme::layout::PADDING_MD)
+                .width(Length::Fill),
                 // Enabled checkbox
-                row![
-                    checkbox("Enable this group for scanning", editing.enabled)
-                        .style(theme::checkbox_styles::default)
-                        .on_toggle(NetworkConfigMessage::SetGroupEnabled)
-                ]
-                .spacing(theme::layout::SPACING_MD),
-                container(theme::typography::small(
-                    "💡 Supports CIDR notation (192.168.1.0/24) or IP ranges (192.168.1.1-100)"
-                ))
-                .style(iced::widget::container::rounded_box)
-                .padding(theme::layout::PADDING_SM)
-                .width(Length::Fill)
+                container(
+                    row![
+                        checkbox("Enable this group for scanning", editing.enabled)
+                            .style(theme::checkbox_styles::default)
+                            .on_toggle(NetworkConfigMessage::SetGroupEnabled)
+                    ]
+                    .spacing(theme::layout::SPACING_MD),
+                )
+                .style(theme::container_styles::card)
+                .padding(theme::layout::PADDING_MD)
+                .width(Length::Fill),
             ]
             .spacing(theme::layout::SPACING_MD),
         )
         .style(theme::container_styles::card)
-        .padding(theme::layout::PADDING_MD)
+        .padding(theme::layout::PADDING_XL)
         .width(Length::Fill);
 
         // Filter configuration
         let filter_config = container(
             column![
-                theme::typography::heading("🔍 Miner Filters"),
+                theme::typography::heading("Miner Filters"),
                 theme::typography::small("Configure which types of miners to discover (leave all unchecked to find all types)"),
-                Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_MD)),
+                Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_SM)),
 
-                row![
-                    // Miner make filters
-                    container(
-                        column![
-                            theme::typography::body("Miner Manufacturers:"),
-                            Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_SM)),
+                container(
+                    row![
+                        // Miner make filters
+                        container(
+                            column![
+                                theme::typography::body("Miner Manufacturers:"),
+                                Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_SM)),
 
-                            checkbox("🐜 AntMiner (Bitmain)", self.filter_antminers)
-                .style(theme::checkbox_styles::default)
-                                .on_toggle(NetworkConfigMessage::ToggleAntMiners),
-                            checkbox("❓ WhatsMiner (MicroBT)", self.filter_whatsminers)
-                .style(theme::checkbox_styles::default)
-                                .on_toggle(NetworkConfigMessage::ToggleWhatsMiners),
-                            checkbox("🏔️ AvalonMiner (Canaan)", self.filter_avalonminers)
-                .style(theme::checkbox_styles::default)
-                                .on_toggle(NetworkConfigMessage::ToggleAvalonMiners),
-                        ]
+                                checkbox("AntMiner (Bitmain)", self.filter_antminers)
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(NetworkConfigMessage::ToggleAntMiners),
+                                checkbox("WhatsMiner (MicroBT)", self.filter_whatsminers)
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(NetworkConfigMessage::ToggleWhatsMiners),
+                                checkbox("AvalonMiner (Canaan)", self.filter_avalonminers)
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(NetworkConfigMessage::ToggleAvalonMiners),
+                            ]
+                            .spacing(theme::layout::SPACING_SM)
+                        )
+                        .width(Length::FillPortion(1)),
+
+                        Space::new(Length::Fixed(theme::layout::SPACING_MD), Length::Fixed(0.0)),
+
+                        // Firmware filters
+                        container(
+                            column![
+                                theme::typography::body("Firmware Types:"),
+                                Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_SM)),
+
+                                checkbox("Braiins OS (Custom)", self.filter_braiins_os)
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(NetworkConfigMessage::ToggleBraiinsOS),
+                                checkbox("Stock Firmware (Factory)", self.filter_stock_firmware)
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(NetworkConfigMessage::ToggleStockFirmware),
+                            ]
                         .spacing(theme::layout::SPACING_SM)
-                    )
-                    .width(Length::FillPortion(1)),
+                        )
+                        .width(Length::FillPortion(1)),
+                    ]
+                    .spacing(theme::layout::SPACING_LG)
+                )
+                .style(theme::container_styles::card)
+                .padding(theme::layout::PADDING_MD)
 
-                    Space::new(Length::Fixed(theme::layout::SPACING_LG), Length::Fixed(0.0)),
-
-                    // Firmware filters
-                    container(
-                        column![
-                            theme::typography::body("Firmware Types:"),
-                            Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_SM)),
-
-                            checkbox("🧠 Braiins OS (Custom)", self.filter_braiins_os)
-                .style(theme::checkbox_styles::default)
-                                .on_toggle(NetworkConfigMessage::ToggleBraiinsOS),
-                            checkbox("🏭 Stock Firmware (Factory)", self.filter_stock_firmware)
-                .style(theme::checkbox_styles::default)
-                                .on_toggle(NetworkConfigMessage::ToggleStockFirmware),
-                        ]
-                        .spacing(theme::layout::SPACING_SM)
-                    )
-                    .width(Length::FillPortion(1))
-                ]
-                .spacing(theme::layout::SPACING_LG)
             ]
             .spacing(theme::layout::SPACING_SM)
         )
         .style(theme::container_styles::card)
-        .padding(theme::layout::PADDING_MD)
+        .padding(theme::layout::PADDING_XL)
         .width(Length::Fill);
 
         // Action buttons
         let action_buttons = container(
             row![
                 button(
-                    row![text("❌").size(16), theme::typography::body("Cancel")]
-                        .spacing(theme::layout::SPACING_SM)
-                        .align_y(iced::alignment::Vertical::Center)
+                    row![
+                        theme::typography::body("Cancel")
+                            .align_x(iced::alignment::Horizontal::Center)
+                            .width(Length::Fill)
+                    ]
+                    .spacing(theme::layout::SPACING_SM)
+                    .align_y(iced::alignment::Vertical::Center)
                 )
                 .style(iced::widget::button::secondary)
                 .padding(theme::layout::PADDING_SM)
-                .width(theme::layout::BUTTON_WIDTH)
                 .on_press(NetworkConfigMessage::CancelGroupEdit),
                 Space::new(Length::Fill, Length::Fixed(0.0)),
                 button(
                     row![
-                        text(if is_editing { "💾" } else { "➕" }).size(16),
                         theme::typography::body(if is_editing {
                             "Save Changes"
                         } else {
                             "Create Group"
                         })
+                        .align_x(iced::alignment::Horizontal::Center)
+                        .width(Length::Fill)
                     ]
                     .spacing(theme::layout::SPACING_SM)
                     .align_y(iced::alignment::Vertical::Center)
@@ -575,8 +596,8 @@ impl NetworkConfig {
         let main_content =
             container(column![basic_config, filter_config].spacing(theme::layout::SPACING_LG))
                 .width(Length::Fill)
-                .max_width(900) // Limit max width for better form layout
-                .center_x(Length::Fill);
+                .center_x(Length::Fill)
+                .padding(theme::layout::PADDING_MD);
 
         let content = column![
             header,

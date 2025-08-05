@@ -167,7 +167,6 @@ impl ScanningView {
     fn view_scan_header(&self) -> Element<ScanningMessage> {
         let _theme = BtcTheme::default();
 
-        let status_icon = if self.is_scanning { "🔄" } else { "✅" };
         let status_text = if self.is_scanning {
             "Scanning in Progress"
         } else {
@@ -176,7 +175,7 @@ impl ScanningView {
 
         let header_row = row![
             column![
-                theme::typography::title(format!("{status_icon} Network Scan")),
+                theme::typography::title(format!("Network Scan")),
                 theme::typography::small(status_text)
             ]
             .spacing(theme::layout::SPACING_XS),
@@ -184,7 +183,6 @@ impl ScanningView {
             // Live status indicator
             container(
                 row![
-                    text(status_icon).size(20),
                     column![
                         theme::typography::body(status_text),
                         theme::typography::tiny(if self.is_scanning {
@@ -239,7 +237,7 @@ impl ScanningView {
                 .align_x(iced::alignment::Horizontal::Center)
                 .spacing(theme::layout::SPACING_XS)
             )
-            .style(iced::widget::container::rounded_box)
+            .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_MD)
             .width(Length::FillPortion(1)),
             // Groups progress
@@ -255,7 +253,7 @@ impl ScanningView {
                 .align_x(iced::alignment::Horizontal::Center)
                 .spacing(theme::layout::SPACING_XS)
             )
-            .style(iced::widget::container::rounded_box)
+            .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_MD)
             .width(Length::FillPortion(1)),
             // Elapsed time
@@ -268,7 +266,7 @@ impl ScanningView {
                 .align_x(iced::alignment::Horizontal::Center)
                 .spacing(theme::layout::SPACING_XS)
             )
-            .style(iced::widget::container::rounded_box)
+            .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_MD)
             .width(Length::FillPortion(1)),
             // Error count
@@ -324,7 +322,7 @@ impl ScanningView {
             ]
             .spacing(theme::layout::SPACING_XS),
         )
-        .style(iced::widget::container::rounded_box)
+        .style(theme::container_styles::card)
         .padding(theme::layout::PADDING_MD)
         .width(Length::Fill)
         .into()
@@ -333,47 +331,38 @@ impl ScanningView {
     fn view_control_section(&self) -> Element<ScanningMessage> {
         let _theme = BtcTheme::default();
 
-        let section_header = theme::typography::heading("🎛️ Scan Control");
+        let section_header = theme::typography::heading("Scan Control");
 
         // Control buttons
         let controls = if self.is_scanning {
             column![
                 button(
-                    row![
-                        text("⏹️").size(16),
-                        theme::typography::body("Stop All Scans")
-                    ]
-                    .spacing(theme::layout::SPACING_SM)
-                    .align_y(iced::alignment::Vertical::Center)
+                    row![theme::typography::body("Stop All Scans")]
+                        .spacing(theme::layout::SPACING_SM)
+                        .align_y(iced::alignment::Vertical::Center)
                 )
                 .style(theme::button_styles::danger)
                 .padding(theme::layout::PADDING_SM)
                 .width(Length::Fill)
                 .on_press(ScanningMessage::StopScan),
-                theme::typography::small("⚠️ Stopping will cancel all active scans")
+                theme::typography::small("Stopping will cancel all active scans")
             ]
             .spacing(theme::layout::SPACING_SM)
         } else {
             column![
                 button(
-                    row![
-                        text("🏠").size(16),
-                        theme::typography::body("Back to Dashboard")
-                    ]
-                    .spacing(theme::layout::SPACING_SM)
-                    .align_y(iced::alignment::Vertical::Center)
+                    row![theme::typography::body("Back to Dashboard")]
+                        .spacing(theme::layout::SPACING_SM)
+                        .align_y(iced::alignment::Vertical::Center)
                 )
                 .style(theme::button_styles::primary)
                 .padding(theme::layout::PADDING_SM)
                 .width(Length::Fill)
                 .on_press(ScanningMessage::BackToDashboard),
                 button(
-                    row![
-                        text("🔄").size(16),
-                        theme::typography::body("Start New Scan")
-                    ]
-                    .spacing(theme::layout::SPACING_SM)
-                    .align_y(iced::alignment::Vertical::Center)
+                    row![theme::typography::body("Start New Scan")]
+                        .spacing(theme::layout::SPACING_SM)
+                        .align_y(iced::alignment::Vertical::Center)
                 )
                 .style(theme::button_styles::secondary)
                 .padding(theme::layout::PADDING_SM)
@@ -404,7 +393,7 @@ impl ScanningView {
     fn view_live_results(&self) -> Element<ScanningMessage> {
         let _theme = BtcTheme::default();
 
-        let section_header = theme::typography::heading("⛏️ Miners");
+        let section_header = theme::typography::heading("Miners");
 
         let results_content = self.view_discovered_miners();
 
@@ -425,7 +414,7 @@ impl ScanningView {
         }
 
         let mut error_list =
-            column![theme::typography::heading("⚠️ Errors")].spacing(theme::layout::SPACING_SM);
+            column![theme::typography::heading("Errors")].spacing(theme::layout::SPACING_SM);
 
         for error in &self.error_messages {
             let error_card = container(theme::typography::small(error))
@@ -447,7 +436,6 @@ impl ScanningView {
         if self.group_status.is_empty() && self.discovered_miners_by_group.is_empty() {
             return container(
                 column![
-                    text("🔍").size(24),
                     theme::typography::body("Preparing scans..."),
                     theme::typography::small("Initializing network discovery")
                 ]
@@ -458,27 +446,24 @@ impl ScanningView {
             .into();
         }
 
-        let header = theme::typography::heading("📊 Group Status");
+        let header = theme::typography::heading("Group Status");
         let mut status_list = column![].spacing(theme::layout::SPACING_SM);
 
         // Show status for groups that have started
         for (group_name, miners) in &self.discovered_miners_by_group {
             let status = self.group_status.get(group_name);
-            let (status_icon, status_text) = match status {
-                Some(s) if s.completed && s.error.is_some() => ("❌", "Error"),
-                Some(s) if s.completed => ("✅", "Complete"),
-                _ => ("🔄", "Scanning"),
+            let status_text = match status {
+                Some(s) if s.completed && s.error.is_some() => "Error",
+                Some(s) if s.completed => "Complete",
+                _ => "Scanning",
             };
 
             let group_card = container(
                 row![
                     column![
-                        row![
-                            text(status_icon).size(16),
-                            theme::typography::body(group_name)
-                        ]
-                        .spacing(theme::layout::SPACING_XS)
-                        .align_y(iced::alignment::Vertical::Center),
+                        row![theme::typography::body(group_name)]
+                            .spacing(theme::layout::SPACING_XS)
+                            .align_y(iced::alignment::Vertical::Center),
                         theme::typography::small(format!("{} miners found", miners.len()))
                     ]
                     .spacing(theme::layout::SPACING_XS)
@@ -501,7 +486,7 @@ impl ScanningView {
                 .align_y(iced::alignment::Vertical::Center)
                 .spacing(theme::layout::SPACING_SM),
             )
-            .style(iced::widget::container::rounded_box)
+            .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_SM)
             .width(Length::Fill);
 
@@ -523,7 +508,6 @@ impl ScanningView {
         if self.discovered_miners_by_group.is_empty() {
             return container(
                 column![
-                    text("🔍").size(32),
                     theme::typography::body("Scanning for miners..."),
                     theme::typography::small(
                         "Live results will appear here as devices are discovered"
@@ -557,14 +541,14 @@ impl ScanningView {
             let group_header = container(
                 row![
                     column![
-                        theme::typography::heading(format!("⛏️ {group_name}")),
+                        theme::typography::heading(format!("{group_name}")),
                         theme::typography::small(format!("{} miners discovered", miners.len()))
                     ]
                     .spacing(theme::layout::SPACING_XS),
                     Space::new(Length::Fill, Length::Fixed(0.0)),
                     if self.is_scanning {
                         container(
-                            row![text("🔄").size(14), theme::typography::tiny("Live")]
+                            row![theme::typography::tiny("Live")]
                                 .spacing(theme::layout::SPACING_XS)
                                 .align_y(iced::alignment::Vertical::Center),
                         )
@@ -609,7 +593,6 @@ impl ScanningView {
                     row![
                         container(
                             row![
-                                text("🟢").size(12),
                                 button(theme::typography::mono(miner_ip.to_string()))
                                     .style(iced::widget::button::text)
                                     .padding(theme::layout::PADDING_XS)
@@ -619,11 +602,11 @@ impl ScanningView {
                             .align_y(iced::alignment::Vertical::Center)
                         )
                         .width(Length::FillPortion(3)),
-                        theme::typography::body(&format!("{:?}", miner.device_info.model))
+                        theme::typography::body(format!("{:?}", miner.device_info.model))
                             .width(Length::FillPortion(3)),
-                        theme::typography::body(&format!("{:?}", miner.device_info.make))
+                        theme::typography::body(format!("{:?}", miner.device_info.make))
                             .width(Length::FillPortion(2)),
-                        theme::typography::body(&format!("{:?}", miner.device_info.firmware))
+                        theme::typography::body(format!("{:?}", miner.device_info.firmware))
                             .width(Length::FillPortion(2)),
                     ]
                     .spacing(theme::layout::SPACING_SM)
@@ -649,7 +632,7 @@ impl ScanningView {
         // Summary at the top if multiple groups
         if self.discovered_miners_by_group.len() > 1 {
             let summary = container(theme::typography::heading(format!(
-                "📈 {total_miners} Total Miners Discovered"
+                "{total_miners} Total Miners Discovered"
             )))
             .style(theme::container_styles::status_success)
             .padding(theme::layout::PADDING_MD)
