@@ -19,6 +19,7 @@ pub enum ScanningMessage {
     AllScansCompleted,
     StopScan,
     BackToDashboard,
+    OpenIpInBrowser(std::net::Ipv4Addr),
 }
 
 #[derive(Debug, Clone)]
@@ -112,6 +113,13 @@ impl ScanningView {
             }
             ScanningMessage::BackToDashboard => {
                 // This will be handled by the parent component
+            }
+            ScanningMessage::OpenIpInBrowser(ip) => {
+                let url = format!("http://{ip}");
+                if let Err(e) = opener::open(&url) {
+                    eprintln!("Failed to open URL {url}: {e}");
+                    // Optionally, show an error message to the user in the UI
+                }
             }
         }
     }
@@ -592,12 +600,17 @@ impl ScanningView {
             sorted_miners.sort_by_key(|m| m.ip);
 
             for miner in sorted_miners {
+                let miner_ip = miner.ip;
+
                 let miner_row = container(
                     row![
                         container(
                             row![
                                 text("🟢").size(12),
-                                theme::typography::mono(miner.ip.to_string())
+                                button(theme::typography::mono(miner_ip.to_string()))
+                                    .style(iced::widget::button::text)
+                                    .padding(theme::layout::PADDING_XS)
+                                    .on_press(ScanningMessage::OpenIpInBrowser(miner_ip))
                             ]
                             .spacing(theme::layout::SPACING_XS)
                             .align_y(iced::alignment::Vertical::Center)
