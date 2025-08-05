@@ -144,7 +144,7 @@ dependencies = [
 [[package]]
 name = "asic-rs"
 version = "0.1.0"
-source = "git+https://github.com/256-Foundation/asic-rs?branch=master#dae08b1be55364a697f3ce9795233f90eb32ef15"
+source = "git+https://github.com/256-Foundation/asic-rs?branch=master#f0277bccb1f5ccd8d651af58bb77a493cb422131"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -433,6 +433,8 @@ dependencies = [
  "iced",
  "mimalloc",
  "opener",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

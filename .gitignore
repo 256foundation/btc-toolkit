@@ -3,3 +3,6 @@
 
 # RustRover Config
 /.idea
+
+# Config Files
+/btc_toolkit_config.json
