@@ -462,7 +462,10 @@ impl Dashboard {
             sorted_miners.sort_by_key(|m| m.ip);
 
             for miner in sorted_miners {
-                let miner_ip = miner.ip;
+                let miner_ip = match miner.ip {
+                    std::net::IpAddr::V4(ipv4) => ipv4,
+                    std::net::IpAddr::V6(_) => continue, // Skip IPv6 addresses for now
+                };
 
                 let miner_row = container(
                     row![
@@ -471,10 +474,11 @@ impl Dashboard {
                             .padding(theme::layout::PADDING_XS)
                             .width(Length::FillPortion(3))
                             .on_press(DashboardMessage::OpenIpInBrowser(miner_ip)),
-                        theme::typography::body(&miner.model).width(Length::FillPortion(3)),
-                        theme::typography::body(miner.make.as_deref().unwrap_or("Unknown"))
+                        theme::typography::body(&format!("{:?}", miner.device_info.model))
+                            .width(Length::FillPortion(3)),
+                        theme::typography::body(&format!("{:?}", miner.device_info.make))
                             .width(Length::FillPortion(2)),
-                        theme::typography::body(miner.firmware.as_deref().unwrap_or("Unknown"))
+                        theme::typography::body(&format!("{:?}", miner.device_info.firmware))
                             .width(Length::FillPortion(2)),
                     ]
                     .spacing(theme::layout::SPACING_SM)

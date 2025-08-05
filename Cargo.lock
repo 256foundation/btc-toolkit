@@ -144,7 +144,7 @@ dependencies = [
 [[package]]
 name = "asic-rs"
 version = "0.1.0"
-source = "git+https://github.com/256-Foundation/asic-rs?branch=master#f0277bccb1f5ccd8d651af58bb77a493cb422131"
+source = "git+https://github.com/256-Foundation/asic-rs?branch=master#e61acd4a8d0613b965e2bb463c1220e5abba0707"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2207,6 +2207,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5b734b4e8187ea5777bc29c086f0970a27d8de42061b48f5af32cafc0ca904b"
 dependencies = [
  "libm",
+ "serde",
 ]
 
 [[package]]

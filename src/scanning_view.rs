@@ -1,5 +1,5 @@
-use crate::network::scanner::MinerInfo;
 use crate::theme::{self, BtcTheme};
+use asic_rs::data::miner::MinerData;
 use iced::widget::{Space, button, column, container, progress_bar, row, scrollable, text};
 use iced::{Element, Length};
 use std::collections::HashMap;
@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 pub enum ScanningMessage {
     MinerFound {
         group_name: String,
-        miner: MinerInfo,
+        miner: MinerData,
     },
     GroupCompleted(String),
     GroupError {
@@ -24,7 +24,7 @@ pub enum ScanningMessage {
 
 #[derive(Debug, Clone)]
 pub struct ScanningView {
-    discovered_miners_by_group: HashMap<String, Vec<MinerInfo>>,
+    discovered_miners_by_group: HashMap<String, Vec<MinerData>>,
     group_status: HashMap<String, GroupScanStatus>,
     total_groups: usize,
     completed_groups: usize,
@@ -600,7 +600,10 @@ impl ScanningView {
             sorted_miners.sort_by_key(|m| m.ip);
 
             for miner in sorted_miners {
-                let miner_ip = miner.ip;
+                let miner_ip = match miner.ip {
+                    std::net::IpAddr::V4(ipv4) => ipv4,
+                    std::net::IpAddr::V6(_) => continue, // Skip IPv6 addresses for now
+                };
 
                 let miner_row = container(
                     row![
@@ -616,10 +619,11 @@ impl ScanningView {
                             .align_y(iced::alignment::Vertical::Center)
                         )
                         .width(Length::FillPortion(3)),
-                        theme::typography::body(&miner.model).width(Length::FillPortion(3)),
-                        theme::typography::body(miner.make.as_deref().unwrap_or("Unknown"))
+                        theme::typography::body(&format!("{:?}", miner.device_info.model))
+                            .width(Length::FillPortion(3)),
+                        theme::typography::body(&format!("{:?}", miner.device_info.make))
                             .width(Length::FillPortion(2)),
-                        theme::typography::body(miner.firmware.as_deref().unwrap_or("Unknown"))
+                        theme::typography::body(&format!("{:?}", miner.device_info.firmware))
                             .width(Length::FillPortion(2)),
                     ]
                     .spacing(theme::layout::SPACING_SM)
@@ -659,7 +663,7 @@ impl ScanningView {
         }
     }
 
-    pub fn get_discovered_miners_by_group(&self) -> HashMap<String, Vec<MinerInfo>> {
+    pub fn get_discovered_miners_by_group(&self) -> HashMap<String, Vec<MinerData>> {
         self.discovered_miners_by_group.clone()
     }
 }

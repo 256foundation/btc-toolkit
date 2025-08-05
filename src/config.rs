@@ -1,4 +1,5 @@
 use crate::network::scanner::ScanConfig;
+use asic_rs::data::miner::MinerData;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -34,7 +35,7 @@ impl ScanGroup {
 pub struct AppConfig {
     pub version: String,
     pub scan_groups: Vec<ScanGroup>,
-    pub last_scan_results: HashMap<String, Vec<crate::network::scanner::MinerInfo>>, // Group name -> miners
+    pub last_scan_results: HashMap<String, Vec<MinerData>>, // Group name -> miners
 }
 
 impl Default for AppConfig {
@@ -67,7 +68,9 @@ impl AppConfig {
 
     /// Load configuration from default location (btc_toolkit_config.json in current directory)
     pub fn load() -> Self {
-        Self::load_from_file("btc_toolkit_config.json").unwrap_or_else(|_| {
+        Self::load_from_file("btc_toolkit_config.json").unwrap_or_else(|e| {
+            eprintln!("Warning: Failed to load config file: {e}");
+
             // If loading fails, create default config and save it
             let config = Self::default();
             if let Err(e) = config.save_to_file("btc_toolkit_config.json") {
@@ -120,27 +123,18 @@ impl AppConfig {
     }
 
     /// Store scan results for a group
-    pub fn store_scan_results(
-        &mut self,
-        group_name: &str,
-        miners: Vec<crate::network::scanner::MinerInfo>,
-    ) {
+    pub fn store_scan_results(&mut self, group_name: &str, miners: Vec<MinerData>) {
         self.last_scan_results
             .insert(group_name.to_string(), miners);
     }
 
     /// Get scan results for a group
-    pub fn get_scan_results(
-        &self,
-        group_name: &str,
-    ) -> Option<&Vec<crate::network::scanner::MinerInfo>> {
+    pub fn get_scan_results(&self, group_name: &str) -> Option<&Vec<MinerData>> {
         self.last_scan_results.get(group_name)
     }
 
     /// Get all scan results
-    pub fn get_all_scan_results(
-        &self,
-    ) -> &HashMap<String, Vec<crate::network::scanner::MinerInfo>> {
+    pub fn get_all_scan_results(&self) -> &HashMap<String, Vec<MinerData>> {
         &self.last_scan_results
     }
 }
