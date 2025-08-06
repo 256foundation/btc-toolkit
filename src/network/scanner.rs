@@ -182,27 +182,6 @@ impl Scanner {
 
     /// Create and configure a MinerFactory based on network range and config
     fn create_factory(network_range: &str, config: &ScanConfig) -> Result<MinerFactory, String> {
-        let mut factory = if network_range.contains('/') {
-            MinerFactory::new()
-                .with_subnet(network_range)
-                .map_err(|e| format!("Invalid subnet: {e}"))?
-        } else if network_range.contains('-') {
-            MinerFactory::new()
-                .with_range(network_range)
-                .map_err(|e| format!("Invalid range: {e}"))?
-        } else {
-            return Err("Invalid network range format. Use CIDR (192.168.1.0/24) or range (192.168.1.1-100)".to_string());
-        };
-
-        // Apply search filters if configured
-        if let Some(ref makes) = config.search_makes {
-            factory = factory.with_search_makes(makes.clone());
-        }
-
-        if let Some(ref firmwares) = config.search_firmwares {
-            factory = factory.with_search_firmwares(firmwares.clone());
-        }
-
-        Ok(factory)
+        super::create_configured_miner_factory(network_range, config)
     }
 }

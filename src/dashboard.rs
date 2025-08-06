@@ -1,4 +1,5 @@
 use crate::config::AppConfig;
+use crate::network::estimate_ip_count;
 use crate::theme::{self, BtcTheme};
 use iced::widget::{Space, button, column, container, row, scrollable};
 use iced::{Element, Length};
@@ -64,35 +65,6 @@ impl Dashboard {
                 iced::Task::none()
             }
         }
-    }
-
-    /// Estimate the number of IPs to scan based on the range
-    pub fn estimate_ip_count(&self, range: &str) -> usize {
-        if range.contains('/') {
-            // CIDR notation, e.g., "192.168.1.0/24" = 254 IPs
-            if let Some(prefix_len) = range.split('/').nth(1) {
-                if let Ok(prefix) = prefix_len.parse::<u8>() {
-                    let host_bits = 32 - prefix;
-                    let total_ips = 2_usize.pow(host_bits as u32);
-                    // Subtract network and broadcast addresses
-                    return total_ips.saturating_sub(2).max(1);
-                }
-            }
-        } else if range.contains('-') {
-            // Range notation, e.g., "192.168.1.1-100" = 100 IPs
-            let parts: Vec<&str> = range.split('-').collect();
-            if parts.len() == 2 {
-                if let Ok(end) = parts[1].parse::<u8>() {
-                    if let Some(start_part) = parts[0].split('.').next_back() {
-                        if let Ok(start) = start_part.parse::<u8>() {
-                            return (end.saturating_sub(start) + 1) as usize;
-                        }
-                    }
-                }
-            }
-        }
-        // Default fallback
-        254
     }
 
     pub fn view(&self) -> Element<DashboardMessage> {
@@ -170,7 +142,7 @@ impl Dashboard {
         let total_miners: usize = all_results.values().map(|miners| miners.len()).sum();
         let total_ips: usize = enabled_groups
             .iter()
-            .map(|group| self.estimate_ip_count(&group.network_range))
+            .map(|group| estimate_ip_count(&group.network_range))
             .sum();
 
         let stats = row![
@@ -347,7 +319,7 @@ impl Dashboard {
         let mut groups_list = column![].spacing(theme::layout::SPACING_SM);
 
         for group in &self.app_config.scan_groups {
-            let estimated_ips = self.estimate_ip_count(&group.network_range);
+            let estimated_ips = estimate_ip_count(&group.network_range);
 
             let group_card = container(
                 row![

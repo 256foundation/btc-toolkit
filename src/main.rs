@@ -7,6 +7,7 @@ mod theme;
 
 use crate::config::AppConfig;
 use crate::dashboard::{Dashboard, DashboardMessage};
+use crate::network::estimate_ip_count;
 use crate::network::scanner::{Scanner, ScannerMessage};
 use crate::network_config::{NetworkConfig, NetworkConfigMessage};
 use crate::scanning_view::{ScanningMessage, ScanningView};
@@ -102,7 +103,7 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> iced::Task<BtcT
                     let enabled_groups = state.app_config.get_enabled_groups();
                     let total_ips: usize = enabled_groups
                         .iter()
-                        .map(|group| state.main_page.estimate_ip_count(&group.network_range))
+                        .map(|group| estimate_ip_count(&group.network_range))
                         .sum();
 
                     // Create scanning view and switch to it
