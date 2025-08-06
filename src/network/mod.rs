@@ -43,7 +43,7 @@ pub fn create_configured_miner_factory(
 /// Estimate the number of IPs in a network range
 pub fn estimate_ip_count(network_range: &str) -> usize {
     match create_miner_factory(network_range) {
-        Ok(factory) => factory.ip_count(),
+        Ok(factory) => factory.hosts().len(),
         Err(_) => 0,
     }
 }

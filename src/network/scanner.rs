@@ -165,15 +165,21 @@ impl Scanner {
 
         // Use the asic-rs scan_stream function for concurrent scanning
         let mut stream = factory
-            .scan_stream()
+            .scan_stream_with_ip()
             .map_err(|e| format!("Failed to create scan stream: {e}"))?;
 
         // Stream miners as they are discovered and send to channel
-        while let Some(miner) = stream.next().await {
-            let miner_data = miner.get_data().await;
-            if tx.send(miner_data).is_err() {
-                // Channel closed, stop scanning
-                break;
+        while let Some(result) = stream.next().await {
+            let (miner_ip, maybe_miner) = result;
+            match maybe_miner {
+                Some(miner) => {
+                    let miner_data = miner.get_data().await;
+                    if tx.send(miner_data).is_err() {
+                        // Channel closed, stop scanning
+                        break;
+                    }
+                }
+                None => {}
             }
         }
 
