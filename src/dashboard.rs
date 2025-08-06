@@ -1,6 +1,6 @@
 use crate::config::AppConfig;
 use crate::theme::{self, BtcTheme};
-use iced::widget::{Space, button, column, container, row, scrollable, text};
+use iced::widget::{Space, button, column, container, row, scrollable};
 use iced::{Element, Length};
 use std::net::Ipv4Addr;
 
@@ -117,11 +117,17 @@ impl Dashboard {
                 .padding(theme::layout::PADDING_MD)
                 .width(Length::FillPortion(2))
         ]
-        .spacing(theme::layout::SPACING_MD);
+        .spacing(theme::layout::SPACING_MD)
+        .height(Length::Fill);
 
-        let content = column![header, stats_cards, main_content]
-            .spacing(theme::layout::SPACING_MD)
-            .padding(theme::layout::PADDING_MD);
+        let content = column![
+            row![column![header]],
+            row![
+                column![stats_cards, main_content]
+                    .spacing(theme::layout::SPACING_MD)
+                    .padding(theme::layout::PADDING_MD)
+            ]
+        ];
 
         container(content)
             .width(Length::Fill)
@@ -132,29 +138,29 @@ impl Dashboard {
     fn view_header(&self) -> Element<DashboardMessage> {
         let _theme = BtcTheme::default();
 
-        let title_row = row![
-            column![
-                theme::typography::title("⚡ BTC Farm Management"),
-                theme::typography::small("Bitcoin ASIC Miner Control Center")
+        container(
+            row![
+                column![
+                    theme::typography::title("BTC Farm Management"),
+                    theme::typography::small("Bitcoin ASIC Miner Control Center")
+                ]
+                .spacing(theme::layout::SPACING_XS),
+                Space::new(Length::Fill, Length::Fixed(0.0)),
+                // System status indicator
+                container(
+                    row![theme::typography::body("System Online")]
+                        .spacing(theme::layout::SPACING_XS)
+                        .align_y(iced::alignment::Vertical::Center)
+                )
+                .style(theme::container_styles::card)
+                .padding(theme::layout::PADDING_SM)
             ]
-            .spacing(theme::layout::SPACING_XS),
-            Space::new(Length::Fill, Length::Fixed(0.0)),
-            // System status indicator
-            container(
-                row![theme::typography::body("System Online")]
-                    .spacing(theme::layout::SPACING_XS)
-                    .align_y(iced::alignment::Vertical::Center)
-            )
-            .style(theme::container_styles::card)
-            .padding([theme::layout::PADDING_XS, theme::layout::PADDING_SM])
-        ]
-        .align_y(iced::alignment::Vertical::Center);
-
-        container(title_row)
-            .style(theme::container_styles::header)
-            .padding(theme::layout::PADDING_MD)
-            .width(Length::Fill)
-            .into()
+            .align_y(iced::alignment::Vertical::Center),
+        )
+        .style(theme::container_styles::header)
+        .padding(theme::layout::PADDING_MD)
+        .width(Length::Fill)
+        .into()
     }
 
     fn view_stats_cards(&self) -> Element<DashboardMessage> {
@@ -230,7 +236,6 @@ impl Dashboard {
             .width(Length::FillPortion(1))
         ]
         .spacing(theme::layout::SPACING_MD);
-
         stats.into()
     }
 
@@ -254,7 +259,7 @@ impl Dashboard {
                 .spacing(theme::layout::SPACING_SM)
                 .align_y(iced::alignment::Vertical::Center)
             )
-            .style(iced::widget::button::secondary)
+            .style(button::secondary)
             .padding(theme::layout::PADDING_SM)
             .width(Length::Fill)
             .on_press(DashboardMessage::OpenNetworkConfig),
@@ -262,12 +267,12 @@ impl Dashboard {
             {
                 if enabled_groups.is_empty() {
                     button(theme::typography::body("No Groups Enabled"))
-                        .style(iced::widget::button::secondary)
+                        .style(button::secondary)
                         .padding(theme::layout::PADDING_SM)
                         .width(Length::Fill)
                 } else if self.scanning {
                     button(theme::typography::body("Stop Scan"))
-                        .style(iced::widget::button::danger)
+                        .style(button::danger)
                         .padding(theme::layout::PADDING_SM)
                         .width(Length::Fill)
                         .on_press(DashboardMessage::StopScan)
@@ -277,7 +282,7 @@ impl Dashboard {
                             .align_x(iced::alignment::Horizontal::Center)
                             .width(Length::Fill),
                     )
-                    .style(iced::widget::button::primary)
+                    .style(button::primary)
                     .padding(theme::layout::PADDING_SM)
                     .width(Length::Fill)
                     .on_press(DashboardMessage::StartScan)
@@ -297,6 +302,7 @@ impl Dashboard {
             groups_section
         ]
         .spacing(theme::layout::SPACING_SM)
+        .height(Length::Fill)
         .into()
     }
 
@@ -304,7 +310,7 @@ impl Dashboard {
         let _theme = BtcTheme::default();
 
         let panel_header = row![
-            theme::typography::heading("📊 Mining Operations"),
+            theme::typography::heading("Mining Operations"),
             Space::new(Length::Fill, Length::Fixed(0.0))
         ];
 
@@ -316,6 +322,7 @@ impl Dashboard {
             results_content
         ]
         .spacing(theme::layout::SPACING_SM)
+        .height(Length::Fill)
         .into()
     }
 
@@ -335,7 +342,7 @@ impl Dashboard {
             .into();
         }
 
-        let header = theme::typography::heading("📁 Scan Groups");
+        let header = theme::typography::heading("Scan Groups");
 
         let mut groups_list = column![].spacing(theme::layout::SPACING_SM);
 
@@ -470,7 +477,7 @@ impl Dashboard {
                 let miner_row = container(
                     row![
                         button(theme::typography::mono(miner_ip.to_string()))
-                            .style(iced::widget::button::text)
+                            .style(button::text)
                             .padding(theme::layout::PADDING_XS)
                             .width(Length::FillPortion(3))
                             .on_press(DashboardMessage::OpenIpInBrowser(miner_ip)),

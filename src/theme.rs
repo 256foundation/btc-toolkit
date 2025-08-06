@@ -75,7 +75,7 @@ impl Default for BtcTheme {
 
 /// Create a custom Iced theme based on our Bitcoin color scheme
 pub fn btc_theme() -> Theme {
-    Theme::Dark
+    Theme::CatppuccinMacchiato
 }
 
 /// Button styles for different use cases
