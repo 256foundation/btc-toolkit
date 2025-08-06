@@ -1,9 +1,6 @@
-use asic_rs::{
-    data::{
-        device::{MinerFirmware, MinerMake},
-        miner::MinerData,
-    },
-    miners::factory::MinerFactory,
+use asic_rs::data::{
+    device::{MinerFirmware, MinerMake},
+    miner::MinerData,
 };
 use iced::{
     futures::{SinkExt, StreamExt, future},
@@ -11,11 +8,16 @@ use iced::{
 };
 use tokio::runtime::Runtime;
 
-/// Configuration for scanner behavior
+/// Scanner configuration with optional filters
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ScanConfig {
     pub search_makes: Option<Vec<MinerMake>>,
     pub search_firmwares: Option<Vec<MinerFirmware>>,
+}
+
+/// Calculate adaptive buffer size (50-1000 range)
+fn calculate_buffer_size(estimated_ips: usize) -> usize {
+    (50 + estimated_ips / 10).min(1000).max(50)
 }
 
 #[derive(Debug, Clone)]
@@ -31,7 +33,7 @@ pub enum ScannerMessage {
     AllScansCompleted,
 }
 
-/// Represents a scan group with its network range and configuration
+/// Network scan group with range and filters
 #[derive(Debug, Clone)]
 pub struct ScanGroup {
     pub name: String,
@@ -56,7 +58,7 @@ impl ScanGroup {
 pub struct Scanner;
 
 impl Scanner {
-    /// Start scanning multiple groups simultaneously
+    /// Scan multiple groups in parallel
     pub fn scan_multiple_groups(groups: Vec<ScanGroup>) -> iced::Subscription<ScannerMessage> {
         iced::Subscription::run_with_id(
             "multi_group_scanner",
@@ -64,11 +66,19 @@ impl Scanner {
         )
     }
 
-    /// Create a stream that scans multiple groups in parallel with streaming
+    /// Create parallel scanning stream with adaptive buffering
     fn scan_multiple_groups_stream(
         groups: Vec<ScanGroup>,
     ) -> impl iced::futures::Stream<Item = ScannerMessage> {
-        stream::channel(100, |mut output| async move {
+        // Size buffer based on total IP count
+        let total_estimated_ips: usize = groups
+            .iter()
+            .map(|group| super::estimate_ip_count(&group.network_range))
+            .sum();
+
+        let buffer_size = calculate_buffer_size(total_estimated_ips);
+
+        stream::channel(buffer_size, |mut output| async move {
             use future::join_all;
 
             let total_groups = groups.len();
@@ -79,7 +89,7 @@ impl Scanner {
                 return;
             }
 
-            // Create futures for all group scans to run in parallel
+            // Spawn parallel scan tasks
             let scan_futures = groups.into_iter().map(|group| {
                 let mut output_clone = output.clone();
                 let group_name = group.name.clone();
@@ -93,89 +103,89 @@ impl Scanner {
                     )
                     .await;
 
-                    // Send group completion
+                    // Report group completion
                     let _ = output_clone
                         .send(ScannerMessage::GroupScanCompleted { group_name, result })
                         .await;
                 }
             });
 
-            // Execute all group scans in parallel
+            // Execute parallel scans
             join_all(scan_futures).await;
 
-            // Send completion after all groups are done
+            // Signal all scans complete
             let _ = output.send(ScannerMessage::AllScansCompleted).await;
 
-            // Keep the stream alive until the subscription is dropped
+            // Keep stream alive for subscription lifecycle
             std::future::pending::<()>().await;
         })
     }
 
-    /// Real-time streaming scan that sends miners immediately as they are discovered
+    /// Real-time scan with dedicated runtime bridge
     async fn perform_realtime_scan(
         network_range: &str,
         config: &ScanConfig,
         output: &mut iced::futures::channel::mpsc::Sender<ScannerMessage>,
         group_name: &str,
     ) -> Result<(), String> {
-        // Create a separate Tokio runtime to avoid conflicts with Iced's runtime
-        let rt = Runtime::new().map_err(|e| format!("Failed to create Tokio runtime: {e}"))?;
-
-        // Create a channel to receive miners from the runtime
+        // Channel for async miner streaming
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<MinerData>();
 
-        // Spawn the scanning task in the runtime
+        // Dedicated runtime for Tokio operations (Iced runs outside Tokio context)
+        let rt = Runtime::new().map_err(|e| format!("Failed to create Tokio runtime: {e}"))?;
+
         let network_range = network_range.to_owned();
         let config = config.clone();
-        let group_name = group_name.to_owned();
+        let _group_name_clone = group_name.to_owned();
 
-        let handle = std::thread::spawn(move || {
+        // Thread bridge to Tokio runtime
+        let scan_handle = std::thread::spawn(move || {
             rt.block_on(async move { Self::scan_network(&network_range, &config, tx).await })
         });
 
-        // Receive miners from the channel and forward to output immediately
+        // Forward discovered miners to output stream
         while let Some(miner) = rx.recv().await {
             if output
                 .send(ScannerMessage::MinerDiscovered {
-                    group_name: group_name.clone(),
+                    group_name: group_name.to_owned(),
                     miner,
                 })
                 .await
                 .is_err()
             {
-                // Output channel closed, stop processing
+                // Output closed, stop forwarding
                 break;
             }
         }
 
-        // Wait for the scanning thread to complete and check for errors
-        handle
+        // Wait for scan completion
+        scan_handle
             .join()
             .map_err(|_| "Scanning thread panicked".to_string())?
     }
 
-    /// Scan a network range and send discovered miners through the channel
+    /// Network scan with miner discovery streaming
     async fn scan_network(
         network_range: &str,
         config: &ScanConfig,
         tx: tokio::sync::mpsc::UnboundedSender<MinerData>,
     ) -> Result<(), String> {
-        // Build MinerFactory with configuration
-        let factory = Self::create_factory(network_range, config)?;
+        // Create configured factory
+        let factory = super::create_configured_miner_factory(network_range, config)?;
 
-        // Use the asic-rs scan_stream function for concurrent scanning
+        // Stream concurrent IP scans
         let mut stream = factory
             .scan_stream_with_ip()
             .map_err(|e| format!("Failed to create scan stream: {e}"))?;
 
-        // Stream miners as they are discovered and send to channel
+        // Forward discovered miners
         while let Some(result) = stream.next().await {
-            let (miner_ip, maybe_miner) = result;
+            let (_miner_ip, maybe_miner) = result;
             match maybe_miner {
                 Some(miner) => {
                     let miner_data = miner.get_data().await;
                     if tx.send(miner_data).is_err() {
-                        // Channel closed, stop scanning
+                        // Channel closed, stop scan
                         break;
                     }
                 }
@@ -184,10 +194,5 @@ impl Scanner {
         }
 
         Ok(())
-    }
-
-    /// Create and configure a MinerFactory based on network range and config
-    fn create_factory(network_range: &str, config: &ScanConfig) -> Result<MinerFactory, String> {
-        super::create_configured_miner_factory(network_range, config)
     }
 }
