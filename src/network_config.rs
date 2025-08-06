@@ -252,7 +252,7 @@ impl NetworkConfig {
                         .spacing(theme::layout::SPACING_SM)
                         .align_y(iced::alignment::Vertical::Center)
                 )
-                .style(iced::widget::button::primary)
+                .style(button::primary)
                 .padding(theme::layout::PADDING_SM)
                 .on_press(NetworkConfigMessage::AddNewGroup)
             ]
@@ -376,7 +376,7 @@ impl NetworkConfig {
                     .spacing(theme::layout::SPACING_SM)
                     .align_y(iced::alignment::Vertical::Center)
                 )
-                .style(iced::widget::button::secondary)
+                .style(button::secondary)
                 .padding(theme::layout::PADDING_SM)
                 .on_press(NetworkConfigMessage::Close),
                 Space::new(Length::Fill, Length::Fixed(0.0)),
@@ -389,7 +389,7 @@ impl NetworkConfig {
                     .spacing(theme::layout::SPACING_SM)
                     .align_y(iced::alignment::Vertical::Center)
                 )
-                .style(iced::widget::button::primary)
+                .style(button::primary)
                 .padding(theme::layout::PADDING_SM)
                 .on_press(NetworkConfigMessage::Save)
             ]

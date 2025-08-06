@@ -154,9 +154,14 @@ impl ScanningView {
         .spacing(theme::layout::SPACING_MD)
         .height(Length::Fill);
 
-        let content = column![header, stats_dashboard, progress_section, main_content]
-            .spacing(theme::layout::SPACING_MD)
-            .padding(theme::layout::PADDING_MD);
+        let content = column![
+            row![column![header]],
+            row![
+                column![stats_dashboard, progress_section, main_content]
+                    .spacing(theme::layout::SPACING_MD)
+                    .padding(theme::layout::PADDING_MD)
+            ]
+        ];
 
         container(content)
             .width(Length::Fill)
@@ -239,6 +244,7 @@ impl ScanningView {
             )
             .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_MD)
+            .align_x(iced::alignment::Horizontal::Center)
             .width(Length::FillPortion(1)),
             // Groups progress
             container(
@@ -255,6 +261,7 @@ impl ScanningView {
             )
             .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_MD)
+            .align_x(iced::alignment::Horizontal::Center)
             .width(Length::FillPortion(1)),
             // Elapsed time
             container(
@@ -268,6 +275,7 @@ impl ScanningView {
             )
             .style(theme::container_styles::card)
             .padding(theme::layout::PADDING_MD)
+            .align_x(iced::alignment::Horizontal::Center)
             .width(Length::FillPortion(1)),
             // Error count
             container(
@@ -279,13 +287,12 @@ impl ScanningView {
                 .align_x(iced::alignment::Horizontal::Center)
                 .spacing(theme::layout::SPACING_XS)
             )
-            .style(move |theme| {
-                if self.error_messages.is_empty() {
-                    theme::container_styles::card(theme)
-                } else {
-                    theme::container_styles::status_error(theme)
-                }
+            .style(if self.error_messages.is_empty() {
+                theme::container_styles::card
+            } else {
+                theme::container_styles::status_error
             })
+            .align_x(iced::alignment::Horizontal::Center)
             .padding(theme::layout::PADDING_MD)
             .width(Length::FillPortion(1))
         ]
@@ -341,13 +348,13 @@ impl ScanningView {
                         .spacing(theme::layout::SPACING_SM)
                         .align_y(iced::alignment::Vertical::Center)
                 )
-                .style(theme::button_styles::danger)
+                .style(button::danger)
                 .padding(theme::layout::PADDING_SM)
                 .width(Length::Fill)
                 .on_press(ScanningMessage::StopScan),
                 theme::typography::small("Stopping will cancel all active scans")
             ]
-            .spacing(theme::layout::SPACING_SM)
+            .spacing(theme::layout::SPACING_MD)
         } else {
             column![
                 button(
@@ -355,7 +362,7 @@ impl ScanningView {
                         .spacing(theme::layout::SPACING_SM)
                         .align_y(iced::alignment::Vertical::Center)
                 )
-                .style(theme::button_styles::primary)
+                .style(button::primary)
                 .padding(theme::layout::PADDING_SM)
                 .width(Length::Fill)
                 .on_press(ScanningMessage::BackToDashboard),
@@ -364,12 +371,12 @@ impl ScanningView {
                         .spacing(theme::layout::SPACING_SM)
                         .align_y(iced::alignment::Vertical::Center)
                 )
-                .style(theme::button_styles::secondary)
+                .style(button::secondary)
                 .padding(theme::layout::PADDING_SM)
                 .width(Length::Fill)
                 .on_press(ScanningMessage::BackToDashboard)
             ]
-            .spacing(theme::layout::SPACING_SM)
+            .spacing(theme::layout::SPACING_MD)
         };
 
         // Group status
@@ -380,9 +387,8 @@ impl ScanningView {
 
         column![
             section_header,
-            Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_MD)),
             controls,
-            Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_LG)),
+            Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_MD)),
             group_status,
             error_section
         ]
