@@ -576,6 +576,7 @@ impl ScanningView {
                     theme::typography::small("Model").width(Length::FillPortion(3)),
                     theme::typography::small("Make").width(Length::FillPortion(2)),
                     theme::typography::small("Firmware").width(Length::FillPortion(2)),
+                    theme::typography::small("Firmware Version").width(Length::FillPortion(2)),
                 ]
                 .spacing(theme::layout::SPACING_SM),
             )
@@ -613,6 +614,8 @@ impl ScanningView {
                         theme::typography::body(format!("{:?}", miner.device_info.make))
                             .width(Length::FillPortion(2)),
                         theme::typography::body(format!("{:?}", miner.device_info.firmware))
+                            .width(Length::FillPortion(2)),
+                        theme::typography::body(format!("{:?}", miner.firmware_version))
                             .width(Length::FillPortion(2)),
                     ]
                     .spacing(theme::layout::SPACING_SM)
