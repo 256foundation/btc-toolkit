@@ -26,7 +26,10 @@ pub fn create_configured_miner_factory(
     network_range: &str,
     config: &ScanConfig,
 ) -> Result<MinerFactory, String> {
-    let mut factory = create_miner_factory(network_range)?;
+    let mut factory = create_miner_factory(network_range)?
+        .with_concurrent_limit(10000)
+        .with_connectivity_timeout_secs(3)
+        .with_identification_timeout_secs(3);
 
     // Apply search filters if configured
     if let Some(ref makes) = config.search_makes {
