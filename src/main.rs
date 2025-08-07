@@ -229,7 +229,7 @@ fn subscription(state: &BtcToolkit) -> Subscription<BtcToolkitMessage> {
 }
 
 // View function for the application
-fn view(state: &BtcToolkit) -> Element<BtcToolkitMessage> {
+fn view(state: &BtcToolkit) -> Element<'_, BtcToolkitMessage> {
     match state.current_page {
         Page::Dashboard => state.main_page.view().map(BtcToolkitMessage::Dashboard),
         Page::NetworkConfig => state

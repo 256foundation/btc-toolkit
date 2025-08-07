@@ -225,7 +225,7 @@ impl NetworkConfig {
         }
     }
 
-    pub fn view(&self) -> Element<NetworkConfigMessage> {
+    pub fn view(&self) -> Element<'_, NetworkConfigMessage> {
         if let Some(ref editing) = self.editing_group {
             // Show group editing form
             self.view_group_editor(editing)
@@ -235,7 +235,7 @@ impl NetworkConfig {
         }
     }
 
-    fn view_groups_list(&self) -> Element<NetworkConfigMessage> {
+    fn view_groups_list(&self) -> Element<'_, NetworkConfigMessage> {
         let _theme = BtcTheme::default();
 
         // Header section
@@ -407,7 +407,7 @@ impl NetworkConfig {
             .into()
     }
 
-    fn view_group_editor(&self, editing: &EditingGroup) -> Element<NetworkConfigMessage> {
+    fn view_group_editor(&self, editing: &EditingGroup) -> Element<'_, NetworkConfigMessage> {
         let _theme = BtcTheme::default();
 
         let is_editing = editing.original_name.is_some();

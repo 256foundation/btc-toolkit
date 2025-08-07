@@ -67,7 +67,7 @@ impl Dashboard {
         }
     }
 
-    pub fn view(&self) -> Element<DashboardMessage> {
+    pub fn view(&self) -> Element<'_, DashboardMessage> {
         let _theme = BtcTheme::default();
 
         // Header with title and system status
@@ -107,7 +107,7 @@ impl Dashboard {
             .into()
     }
 
-    fn view_header(&self) -> Element<DashboardMessage> {
+    fn view_header(&self) -> Element<'_, DashboardMessage> {
         let _theme = BtcTheme::default();
 
         container(
@@ -135,7 +135,7 @@ impl Dashboard {
         .into()
     }
 
-    fn view_stats_cards(&self) -> Element<DashboardMessage> {
+    fn view_stats_cards(&self) -> Element<'_, DashboardMessage> {
         let _theme = BtcTheme::default();
         let enabled_groups = self.app_config.get_enabled_groups();
         let all_results = self.app_config.get_all_scan_results();
@@ -211,7 +211,7 @@ impl Dashboard {
         stats.into()
     }
 
-    fn view_control_panel(&self) -> Element<DashboardMessage> {
+    fn view_control_panel(&self) -> Element<'_, DashboardMessage> {
         let _theme = BtcTheme::default();
         let enabled_groups = self.app_config.get_enabled_groups();
 
@@ -278,7 +278,7 @@ impl Dashboard {
         .into()
     }
 
-    fn view_results_panel(&self) -> Element<DashboardMessage> {
+    fn view_results_panel(&self) -> Element<'_, DashboardMessage> {
         let _theme = BtcTheme::default();
 
         let panel_header = row![
@@ -298,7 +298,7 @@ impl Dashboard {
         .into()
     }
 
-    fn view_groups_overview(&self) -> Element<DashboardMessage> {
+    fn view_groups_overview(&self) -> Element<'_, DashboardMessage> {
         let _theme = BtcTheme::default();
 
         if self.app_config.scan_groups.is_empty() {
@@ -363,7 +363,7 @@ impl Dashboard {
         .into()
     }
 
-    fn view_scan_results(&self) -> Element<DashboardMessage> {
+    fn view_scan_results(&self) -> Element<'_, DashboardMessage> {
         let _theme = BtcTheme::default();
         let all_results = self.app_config.get_all_scan_results();
 

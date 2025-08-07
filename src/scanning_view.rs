@@ -124,7 +124,7 @@ impl ScanningView {
         }
     }
 
-    pub fn view(&self) -> Element<ScanningMessage> {
+    pub fn view(&self) -> Element<'_, ScanningMessage> {
         let _theme = BtcTheme::default();
 
         // Header with status
@@ -169,7 +169,7 @@ impl ScanningView {
             .into()
     }
 
-    fn view_scan_header(&self) -> Element<ScanningMessage> {
+    fn view_scan_header(&self) -> Element<'_, ScanningMessage> {
         let _theme = BtcTheme::default();
 
         let status_text = if self.is_scanning {
@@ -217,7 +217,7 @@ impl ScanningView {
             .into()
     }
 
-    fn view_stats_dashboard(&self) -> Element<ScanningMessage> {
+    fn view_stats_dashboard(&self) -> Element<'_, ScanningMessage> {
         let _theme = BtcTheme::default();
 
         let elapsed_time = self
@@ -301,7 +301,7 @@ impl ScanningView {
         stats.into()
     }
 
-    fn view_progress_section(&self) -> Element<ScanningMessage> {
+    fn view_progress_section(&self) -> Element<'_, ScanningMessage> {
         let _theme = BtcTheme::default();
 
         let overall_progress = if self.total_groups > 0 {
@@ -335,7 +335,7 @@ impl ScanningView {
         .into()
     }
 
-    fn view_control_section(&self) -> Element<ScanningMessage> {
+    fn view_control_section(&self) -> Element<'_, ScanningMessage> {
         let _theme = BtcTheme::default();
 
         let section_header = theme::typography::heading("Scan Control");
@@ -396,7 +396,7 @@ impl ScanningView {
         .into()
     }
 
-    fn view_live_results(&self) -> Element<ScanningMessage> {
+    fn view_live_results(&self) -> Element<'_, ScanningMessage> {
         let _theme = BtcTheme::default();
 
         let section_header = theme::typography::heading("Miners");
@@ -412,7 +412,7 @@ impl ScanningView {
         .into()
     }
 
-    fn view_error_section(&self) -> Element<ScanningMessage> {
+    fn view_error_section(&self) -> Element<'_, ScanningMessage> {
         let _theme = BtcTheme::default();
 
         if self.error_messages.is_empty() {
@@ -436,7 +436,7 @@ impl ScanningView {
             .into()
     }
 
-    fn view_group_status(&self) -> Element<ScanningMessage> {
+    fn view_group_status(&self) -> Element<'_, ScanningMessage> {
         let _theme = BtcTheme::default();
 
         if self.group_status.is_empty() && self.discovered_miners_by_group.is_empty() {
@@ -508,7 +508,7 @@ impl ScanningView {
         .into()
     }
 
-    fn view_discovered_miners(&self) -> Element<ScanningMessage> {
+    fn view_discovered_miners(&self) -> Element<'_, ScanningMessage> {
         let _theme = BtcTheme::default();
 
         if self.discovered_miners_by_group.is_empty() {
