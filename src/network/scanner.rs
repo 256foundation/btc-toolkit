@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use asic_rs::{
     data::{
         device::{MinerFirmware, MinerMake},
@@ -6,7 +8,7 @@ use asic_rs::{
     miners::{backends::traits::GetMinerData, data::DataField},
 };
 use iced::{
-    futures::{SinkExt, StreamExt, future},
+    futures::{SinkExt, StreamExt, future, lock::Mutex},
     stream,
 };
 use tokio::runtime::Runtime;
@@ -185,25 +187,21 @@ impl Scanner {
         let factory = super::create_configured_miner_factory(network_range, config)?;
 
         // Stream concurrent IP scans
-        let mut stream = factory
+        let stream = factory
             .scan_stream_with_ip()
             .map_err(|e| format!("Failed to create scan stream: {e}"))?;
 
-        // Forward discovered miners
-        while let Some(result) = stream.next().await {
-            let (_miner_ip, maybe_miner) = result;
-            match maybe_miner {
+        let tx_arc = Arc::new(Mutex::new(tx));
+
+        stream
+            .for_each_concurrent(None, async |(_ip, miner)| match miner {
                 Some(miner) => {
-                    // Use get_partial_data to collect minimal fields
                     let miner_data = get_partial_data(miner).await;
-                    if tx.send(miner_data).is_err() {
-                        // Channel closed, stop scan
-                        break;
-                    }
+                    let _ = tx_arc.lock().await.send(miner_data);
                 }
                 None => {}
-            }
-        }
+            })
+            .await;
 
         Ok(())
     }
