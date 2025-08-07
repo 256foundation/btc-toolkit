@@ -1,6 +1,9 @@
-use asic_rs::data::{
-    device::{MinerFirmware, MinerMake},
-    miner::MinerData,
+use asic_rs::{
+    data::{
+        device::{MinerFirmware, MinerMake},
+        miner::MinerData,
+    },
+    miners::{backends::traits::GetMinerData, data::DataField},
 };
 use iced::{
     futures::{SinkExt, StreamExt, future},
@@ -18,6 +21,15 @@ pub struct ScanConfig {
 /// Calculate adaptive buffer size (50-1000 range)
 fn calculate_buffer_size(estimated_ips: usize) -> usize {
     (50 + estimated_ips / 10).min(1000).max(50)
+}
+
+async fn get_partial_data(miner: Box<dyn GetMinerData>) -> MinerData {
+    let mut collector = miner.get_collector();
+    let data = collector
+        .collect(&[DataField::Mac, DataField::FirmwareVersion])
+        .await;
+
+    miner.parse_data(data)
 }
 
 #[derive(Debug, Clone)]
@@ -136,7 +148,6 @@ impl Scanner {
 
         let network_range = network_range.to_owned();
         let config = config.clone();
-        let _group_name_clone = group_name.to_owned();
 
         // Thread bridge to Tokio runtime
         let scan_handle = std::thread::spawn(move || {
@@ -183,7 +194,8 @@ impl Scanner {
             let (_miner_ip, maybe_miner) = result;
             match maybe_miner {
                 Some(miner) => {
-                    let miner_data = miner.get_data().await;
+                    // Use get_partial_data to collect minimal fields
+                    let miner_data = get_partial_data(miner).await;
                     if tx.send(miner_data).is_err() {
                         // Channel closed, stop scan
                         break;
