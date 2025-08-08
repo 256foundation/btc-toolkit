@@ -207,6 +207,9 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
                         state.scanning_view = None;
                         state.active_scan = None;
                     }
+                    ScanningMessage::SortColumn(_) => {
+                        // Sorting is handled internally by ScanningView
+                    }
                     ScanningMessage::StopScan => {
                         // Stop scanning by clearing active scan
                         state.active_scan = None;

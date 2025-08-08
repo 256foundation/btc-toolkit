@@ -1,6 +1,6 @@
 use crate::theme;
 use asic_rs::data::miner::MinerData;
-use iced::widget::{button, column, container, progress_bar, row, scrollable, text, Space};
+use iced::widget::{Space, button, column, container, progress_bar, row, scrollable, text};
 use iced::{Element, Length};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -20,6 +20,22 @@ pub enum ScanningMessage {
     StopScan,
     BackToDashboard,
     OpenIpInBrowser(std::net::Ipv4Addr),
+    SortColumn(SortColumn),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SortColumn {
+    IpAddress,
+    Model,
+    Make,
+    Firmware,
+    FirmwareVersion,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SortDirection {
+    Ascending,
+    Descending,
 }
 
 #[derive(Debug, Clone)]
@@ -32,6 +48,8 @@ pub struct ScanningView {
     start_time: Option<Instant>,
     total_ips_to_scan: usize,
     error_messages: Vec<String>,
+    sort_column: Option<SortColumn>,
+    sort_direction: SortDirection,
 }
 
 #[derive(Debug, Clone)]
@@ -56,6 +74,8 @@ impl ScanningView {
             start_time: Some(Instant::now()),
             total_ips_to_scan: total_ips,
             error_messages: Vec::new(),
+            sort_column: Some(SortColumn::IpAddress),
+            sort_direction: SortDirection::Ascending,
         }
     }
 
@@ -122,6 +142,19 @@ impl ScanningView {
                     // Optionally, show an error message to the user in the UI
                 }
             }
+            ScanningMessage::SortColumn(column) => {
+                if Some(column) == self.sort_column {
+                    // Toggle direction if clicking the same column
+                    self.sort_direction = match self.sort_direction {
+                        SortDirection::Ascending => SortDirection::Descending,
+                        SortDirection::Descending => SortDirection::Ascending,
+                    };
+                } else {
+                    // New column, default to ascending
+                    self.sort_column = Some(column);
+                    self.sort_direction = SortDirection::Ascending;
+                }
+            }
         }
     }
 
@@ -150,7 +183,7 @@ impl ScanningView {
                 .width(Length::FillPortion(2))
                 .height(Length::Fill)
         ]
-            .spacing(theme::spacing::MD)
+        .spacing(theme::spacing::MD)
         .height(Length::Fill);
 
         let content = column![
@@ -291,7 +324,7 @@ impl ScanningView {
             .padding(theme::padding::MD)
             .width(Length::FillPortion(1))
         ]
-            .spacing(theme::spacing::MD);
+        .spacing(theme::spacing::MD);
 
         stats.into()
     }
@@ -320,10 +353,10 @@ impl ScanningView {
                 Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::SM)),
                 progress_bar_widget
             ]
-                .spacing(theme::spacing::XS),
+            .spacing(theme::spacing::XS),
         )
-            .style(theme::containers::card)
-            .padding(theme::padding::MD)
+        .style(theme::containers::card)
+        .padding(theme::padding::MD)
         .width(Length::Fill)
         .into()
     }
@@ -351,7 +384,7 @@ impl ScanningView {
                 .width(Length::Fill)
                 .on_press(ScanningMessage::StopScan),
             ]
-                .spacing(theme::spacing::MD)
+            .spacing(theme::spacing::MD)
         } else {
             column![
                 button(
@@ -381,7 +414,7 @@ impl ScanningView {
                 .width(Length::Fill)
                 .on_press(ScanningMessage::BackToDashboard)
             ]
-                .spacing(theme::spacing::MD)
+            .spacing(theme::spacing::MD)
         };
 
         // Group status
@@ -397,7 +430,7 @@ impl ScanningView {
             group_status,
             error_section
         ]
-            .spacing(theme::spacing::SM)
+        .spacing(theme::spacing::SM)
         .into()
     }
 
@@ -411,7 +444,7 @@ impl ScanningView {
             Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::MD)),
             results_content
         ]
-            .spacing(theme::spacing::SM)
+        .spacing(theme::spacing::SM)
         .into()
     }
 
@@ -445,12 +478,12 @@ impl ScanningView {
                     theme::typography::small("Initializing network discovery")
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                    .width(Length::Fill)
-                    .spacing(theme::spacing::SM),
+                .width(Length::Fill)
+                .spacing(theme::spacing::SM),
             )
-                .align_y(iced::alignment::Vertical::Center)
-                .height(Length::Fill)
-                .padding(theme::padding::MD)
+            .align_y(iced::alignment::Vertical::Center)
+            .height(Length::Fill)
+            .padding(theme::padding::MD)
             .into();
         }
 
@@ -492,10 +525,10 @@ impl ScanningView {
                     }
                 ]
                 .align_y(iced::alignment::Vertical::Center)
-                    .spacing(theme::spacing::SM),
+                .spacing(theme::spacing::SM),
             )
-                .style(theme::containers::card)
-                .padding(theme::padding::SM)
+            .style(theme::containers::card)
+            .padding(theme::padding::SM)
             .width(Length::Fill);
 
             status_list = status_list.push(group_card);
@@ -506,7 +539,7 @@ impl ScanningView {
             Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::SM)),
             scrollable(status_list).height(Length::Fixed(150.0))
         ]
-            .spacing(theme::spacing::XS)
+        .spacing(theme::spacing::XS)
         .into()
     }
 
@@ -520,9 +553,9 @@ impl ScanningView {
                     )
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                    .spacing(theme::spacing::SM),
+                .spacing(theme::spacing::SM),
             )
-                .padding(theme::padding::LG)
+            .padding(theme::padding::LG)
             .width(Length::Fill)
             .height(Length::Fill)
             .center_x(Length::Fill)
@@ -566,41 +599,101 @@ impl ScanningView {
                 ]
                 .align_y(iced::alignment::Vertical::Center),
             )
-                .padding(theme::padding::SM)
+            .padding(theme::padding::SM)
             .width(Length::Fill);
 
-            // Table header
+            // Table header with sortable columns
             let table_header = container(
                 row![
-                    theme::typography::small("IP Address")
-                        .align_x(iced::alignment::Horizontal::Center)
-                        .width(Length::FillPortion(3)),
-                    theme::typography::small("Model")
-                        .align_x(iced::alignment::Horizontal::Center)
-                        .width(Length::FillPortion(3)),
-                    theme::typography::small("Make")
-                        .align_x(iced::alignment::Horizontal::Center)
-                        .width(Length::FillPortion(2)),
-                    theme::typography::small("Firmware")
-                        .align_x(iced::alignment::Horizontal::Center)
-                        .width(Length::FillPortion(2)),
-                    theme::typography::small("Firmware Version")
-                        .align_x(iced::alignment::Horizontal::Center)
-                        .width(Length::FillPortion(2)),
+                    container(
+                        button(
+                            row![
+                                theme::typography::small("IP Address"),
+                                self.get_sort_indicator(SortColumn::IpAddress)
+                            ]
+                            .align_y(iced::alignment::Vertical::Center)
+                            .spacing(theme::spacing::XS)
+                        )
+                        .style(button::text)
+                        .padding(0)
+                        .on_press(ScanningMessage::SortColumn(SortColumn::IpAddress))
+                    )
+                    .width(Length::FillPortion(3))
+                    .padding(theme::padding::XS),
+                    container(
+                        button(
+                            row![
+                                theme::typography::small("Model"),
+                                self.get_sort_indicator(SortColumn::Model)
+                            ]
+                            .align_y(iced::alignment::Vertical::Center)
+                            .spacing(theme::spacing::XS)
+                        )
+                        .style(button::text)
+                        .padding(0)
+                        .on_press(ScanningMessage::SortColumn(SortColumn::Model))
+                    )
+                    .width(Length::FillPortion(3))
+                    .padding(theme::padding::XS),
+                    container(
+                        button(
+                            row![
+                                theme::typography::small("Make"),
+                                self.get_sort_indicator(SortColumn::Make)
+                            ]
+                            .align_y(iced::alignment::Vertical::Center)
+                            .spacing(theme::spacing::XS)
+                        )
+                        .style(button::text)
+                        .padding(0)
+                        .on_press(ScanningMessage::SortColumn(SortColumn::Make))
+                    )
+                    .width(Length::FillPortion(2))
+                    .padding(theme::padding::XS),
+                    container(
+                        button(
+                            row![
+                                theme::typography::small("Firmware"),
+                                self.get_sort_indicator(SortColumn::Firmware)
+                            ]
+                            .align_y(iced::alignment::Vertical::Center)
+                            .spacing(theme::spacing::XS)
+                        )
+                        .style(button::text)
+                        .padding(0)
+                        .on_press(ScanningMessage::SortColumn(SortColumn::Firmware))
+                    )
+                    .width(Length::FillPortion(2))
+                    .padding(theme::padding::XS),
+                    container(
+                        button(
+                            row![
+                                theme::typography::small("Firmware Version"),
+                                self.get_sort_indicator(SortColumn::FirmwareVersion)
+                            ]
+                            .align_y(iced::alignment::Vertical::Center)
+                            .spacing(theme::spacing::XS)
+                        )
+                        .style(button::text)
+                        .padding(0)
+                        .on_press(ScanningMessage::SortColumn(SortColumn::FirmwareVersion))
+                    )
+                    .width(Length::FillPortion(2))
+                    .padding(theme::padding::XS),
                 ]
-                    .spacing(theme::spacing::SM),
+                .spacing(theme::spacing::SM),
             )
-                .style(theme::containers::header)
-                .padding(theme::padding::SM)
+            .style(theme::containers::header)
+            .padding(theme::padding::SM)
             .width(Length::Fill);
 
             let mut miners_list = column![]
                 .spacing(theme::spacing::XS)
                 .padding(theme::padding::SCROLLABLE);
 
-            // Sort miners by IP for consistent display
+            // Sort miners based on selected column
             let mut sorted_miners = miners.clone();
-            sorted_miners.sort_by_key(|m| m.ip);
+            self.sort_miners(&mut sorted_miners);
 
             for miner in sorted_miners {
                 let miner_ip = match miner.ip {
@@ -610,32 +703,43 @@ impl ScanningView {
 
                 let miner_row = container(
                     row![
-                        button(
-                            theme::typography::mono(miner_ip.to_string())
-                                .align_x(iced::alignment::Horizontal::Center)
+                        container(
+                            button(theme::typography::mono(miner_ip.to_string()))
+                                .style(button::text)
+                                .padding(0)
+                                .on_press(ScanningMessage::OpenIpInBrowser(miner_ip))
                         )
-                        .style(button::text)
-                        .padding(theme::padding::XS)
                         .width(Length::FillPortion(3))
-                        .on_press(ScanningMessage::OpenIpInBrowser(miner_ip)),
-                        theme::typography::body(format!("{}", miner.device_info.model).replace("Plus", "+"))
-                            .align_x(iced::alignment::Horizontal::Center)
-                            .width(Length::FillPortion(3)),
-                        theme::typography::body(format!("{}", miner.device_info.make))
-                            .align_x(iced::alignment::Horizontal::Center)
-                            .width(Length::FillPortion(2)),
-                        theme::typography::body(format!("{}", miner.device_info.firmware))
-                            .align_x(iced::alignment::Horizontal::Center)
-                            .width(Length::FillPortion(2)),
-                        theme::typography::body(format!("{}", miner.firmware_version.unwrap_or("-".into())))
-                            .align_x(iced::alignment::Horizontal::Center)
-                            .width(Length::FillPortion(2)),
+                        .padding(theme::padding::XS),
+                        container(theme::typography::body(
+                            format!("{}", miner.device_info.model).replace("Plus", "+")
+                        ))
+                        .width(Length::FillPortion(3))
+                        .padding(theme::padding::XS),
+                        container(theme::typography::body(format!(
+                            "{}",
+                            miner.device_info.make
+                        )))
+                        .width(Length::FillPortion(2))
+                        .padding(theme::padding::XS),
+                        container(theme::typography::body(format!(
+                            "{}",
+                            miner.device_info.firmware
+                        )))
+                        .width(Length::FillPortion(2))
+                        .padding(theme::padding::XS),
+                        container(theme::typography::body(format!(
+                            "{}",
+                            miner.firmware_version.unwrap_or("-".into())
+                        )))
+                        .width(Length::FillPortion(2))
+                        .padding(theme::padding::XS),
                     ]
-                        .spacing(theme::spacing::SM)
+                    .spacing(theme::spacing::SM)
                     .align_y(iced::alignment::Vertical::Center),
                 )
-                    .style(theme::containers::card)
-                    .padding(theme::padding::SM)
+                .style(theme::containers::card)
+                .padding(theme::padding::SM)
                 .width(Length::Fill);
 
                 miners_list = miners_list.push(miner_row);
@@ -646,7 +750,7 @@ impl ScanningView {
                 table_header.padding(theme::padding::SCROLLABLE),
                 scrollable(miners_list)
             ]
-                .spacing(theme::spacing::XS);
+            .spacing(theme::spacing::XS);
 
             results_content = results_content.push(group_section);
         }
@@ -656,8 +760,8 @@ impl ScanningView {
             let summary = container(theme::typography::heading(format!(
                 "{total_miners} Total Miners Discovered"
             )))
-                .style(theme::containers::success)
-                .padding(theme::padding::MD)
+            .style(theme::containers::success)
+            .padding(theme::padding::MD)
             .width(Length::Fill);
 
             column![summary, results_content]
@@ -670,5 +774,90 @@ impl ScanningView {
 
     pub fn get_discovered_miners_by_group(&self) -> HashMap<String, Vec<MinerData>> {
         self.discovered_miners_by_group.clone()
+    }
+
+    fn get_sort_indicator(&self, column: SortColumn) -> Element<'_, ScanningMessage> {
+        if Some(column) == self.sort_column {
+            let arrow = match self.sort_direction {
+                SortDirection::Ascending => "▲",
+                SortDirection::Descending => "▼",
+            };
+            theme::typography::small(arrow).into()
+        } else {
+            text("").into()
+        }
+    }
+
+    fn sort_miners(&self, miners: &mut Vec<MinerData>) {
+        match self.sort_column {
+            Some(SortColumn::IpAddress) => {
+                miners.sort_by(|a, b| {
+                    let result = a.ip.cmp(&b.ip);
+                    if self.sort_direction == SortDirection::Descending {
+                        result.reverse()
+                    } else {
+                        result
+                    }
+                });
+            }
+            Some(SortColumn::Model) => {
+                miners.sort_by(|a, b| {
+                    let result = a
+                        .device_info
+                        .model
+                        .to_string()
+                        .cmp(&b.device_info.model.to_string());
+                    if self.sort_direction == SortDirection::Descending {
+                        result.reverse()
+                    } else {
+                        result
+                    }
+                });
+            }
+            Some(SortColumn::Make) => {
+                miners.sort_by(|a, b| {
+                    let result = a
+                        .device_info
+                        .make
+                        .to_string()
+                        .cmp(&b.device_info.make.to_string());
+                    if self.sort_direction == SortDirection::Descending {
+                        result.reverse()
+                    } else {
+                        result
+                    }
+                });
+            }
+            Some(SortColumn::Firmware) => {
+                miners.sort_by(|a, b| {
+                    let result = a
+                        .device_info
+                        .firmware
+                        .to_string()
+                        .cmp(&b.device_info.firmware.to_string());
+                    if self.sort_direction == SortDirection::Descending {
+                        result.reverse()
+                    } else {
+                        result
+                    }
+                });
+            }
+            Some(SortColumn::FirmwareVersion) => {
+                miners.sort_by(|a, b| {
+                    let a_version = a.firmware_version.as_deref().unwrap_or("");
+                    let b_version = b.firmware_version.as_deref().unwrap_or("");
+                    let result = a_version.cmp(b_version);
+                    if self.sort_direction == SortDirection::Descending {
+                        result.reverse()
+                    } else {
+                        result
+                    }
+                });
+            }
+            None => {
+                // Should not happen now as we have a default, but fallback to IP address
+                miners.sort_by_key(|m| m.ip);
+            }
+        }
     }
 }
