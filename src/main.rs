@@ -11,7 +11,7 @@ use crate::network::estimate_ip_count;
 use crate::network::scanner::{Scanner, ScannerMessage};
 use crate::network_config::{NetworkConfig, NetworkConfigMessage};
 use crate::scanning_view::{ScanningMessage, ScanningView};
-use iced::{window, Element, Size, Subscription, Task};
+use iced::{Element, Size, Subscription, Task, window};
 use mimalloc::MiMalloc;
 
 // http://github.com/microsoft/mimalloc
@@ -33,7 +33,7 @@ async fn main() -> iced::Result {
             ..window::Settings::default()
         })
         // Apply Bitcoin-inspired theme
-        .theme(|_| theme::btc_theme())
+        .theme(|_| theme::THEME)
         // Run with initial state
         .run_with(|| (BtcToolkit::new(), Task::none()))
 }
