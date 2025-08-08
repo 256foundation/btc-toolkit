@@ -174,8 +174,8 @@ impl NetworkConfig {
     }
 
     fn build_scan_config(&self) -> ScanConfig {
-        let mut makes = Vec::from_iter(self.search_makes.iter().cloned());
-        let mut firmwares = Vec::from_iter(self.search_firmwares.iter().cloned());
+        let makes = Vec::from_iter(self.search_makes.iter().cloned());
+        let firmwares = Vec::from_iter(self.search_firmwares.iter().cloned());
 
         ScanConfig {
             search_makes: if makes.is_empty() { None } else { Some(makes) },
@@ -241,7 +241,7 @@ impl NetworkConfig {
                         .spacing(theme::layout::SPACING_SM)
                         .align_y(iced::alignment::Vertical::Center)
                     )
-                    .style(iced::widget::button::primary)
+                    .style(button::primary)
                     .padding(theme::layout::PADDING_MD)
                     .on_press(NetworkConfigMessage::AddNewGroup)
                 ]
@@ -296,7 +296,7 @@ impl NetworkConfig {
                                     .spacing(theme::layout::SPACING_XS)
                                     .align_y(iced::alignment::Vertical::Center)
                             )
-                            .style(iced::widget::button::secondary)
+                            .style(button::secondary)
                             .padding(theme::layout::PADDING_SM)
                             .width(theme::layout::BUTTON_WIDTH)
                             .on_press(NetworkConfigMessage::EditGroup(group.name.clone())),
@@ -305,7 +305,7 @@ impl NetworkConfig {
                                     .spacing(theme::layout::SPACING_XS)
                                     .align_y(iced::alignment::Vertical::Center)
                             )
-                            .style(iced::widget::button::danger)
+                            .style(button::danger)
                             .padding(theme::layout::PADDING_SM)
                             .width(theme::layout::BUTTON_WIDTH)
                             .on_press(NetworkConfigMessage::DeleteGroup(group.name.clone()))
@@ -545,7 +545,7 @@ impl NetworkConfig {
                     .spacing(theme::layout::SPACING_SM)
                     .align_y(iced::alignment::Vertical::Center)
                 )
-                .style(iced::widget::button::secondary)
+                .style(button::secondary)
                 .padding(theme::layout::PADDING_SM)
                 .on_press(NetworkConfigMessage::CancelGroupEdit),
                 Space::new(Length::Fill, Length::Fixed(0.0)),
@@ -562,7 +562,7 @@ impl NetworkConfig {
                     .spacing(theme::layout::SPACING_SM)
                     .align_y(iced::alignment::Vertical::Center)
                 )
-                .style(iced::widget::button::primary)
+                .style(button::primary)
                 .padding(theme::layout::PADDING_SM)
                 .on_press(NetworkConfigMessage::SaveGroup)
             ]

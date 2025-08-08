@@ -1,6 +1,6 @@
 use crate::theme::{self, BtcTheme};
 use asic_rs::data::miner::MinerData;
-use iced::widget::{Space, button, column, container, progress_bar, row, scrollable, text};
+use iced::widget::{button, column, container, progress_bar, row, scrollable, text, Space};
 use iced::{Element, Length};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -59,6 +59,7 @@ impl ScanningView {
         }
     }
 
+    //noinspection HttpUrlsUsage
     pub fn update(&mut self, message: ScanningMessage) {
         match message {
             ScanningMessage::MinerFound { group_name, miner } => {
@@ -180,7 +181,7 @@ impl ScanningView {
 
         let header_row = row![
             column![
-                theme::typography::title(format!("Network Scan")),
+                theme::typography::title("Network Scan"),
                 theme::typography::small(status_text)
             ]
             .spacing(theme::layout::SPACING_XS),

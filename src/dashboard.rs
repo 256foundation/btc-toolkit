@@ -1,7 +1,7 @@
 use crate::config::AppConfig;
 use crate::network::estimate_ip_count;
 use crate::theme::{self, BtcTheme};
-use iced::widget::{Space, button, column, container, row, scrollable};
+use iced::widget::{button, column, container, row, scrollable, Space};
 use iced::{Element, Length};
 use std::net::Ipv4Addr;
 
@@ -32,6 +32,7 @@ impl Dashboard {
         self.app_config = config;
     }
 
+    //noinspection HttpUrlsUsage
     pub fn update(&mut self, message: DashboardMessage) -> iced::Task<DashboardMessage> {
         match message {
             DashboardMessage::OpenNetworkConfig => {
