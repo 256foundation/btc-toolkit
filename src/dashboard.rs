@@ -456,7 +456,7 @@ impl Dashboard {
                         .padding(theme::padding::XS)
                         .width(Length::FillPortion(3))
                         .on_press(DashboardMessage::OpenIpInBrowser(miner_ip)),
-                        theme::typography::body(format!("{}", miner.device_info.model))
+                        theme::typography::body(format!("{}", miner.device_info.model).replace("Plus", "+"))
                             .align_x(iced::alignment::Horizontal::Center)
                             .width(Length::FillPortion(3)),
                         theme::typography::body(format!("{}", miner.device_info.make))
