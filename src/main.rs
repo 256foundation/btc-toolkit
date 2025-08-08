@@ -2,7 +2,7 @@ mod config;
 mod dashboard;
 mod network;
 mod network_config;
-mod scanning_view;
+mod scanning;
 mod theme;
 
 use crate::config::AppConfig;
@@ -10,7 +10,7 @@ use crate::dashboard::{Dashboard, DashboardMessage};
 use crate::network::estimate_ip_count;
 use crate::network::scanner::{Scanner, ScannerMessage};
 use crate::network_config::{NetworkConfig, NetworkConfigMessage};
-use crate::scanning_view::{ScanningMessage, ScanningView};
+use crate::scanning::{ScanningMessage, ScanningView};
 use iced::{Element, Size, Subscription, Task, window};
 use mimalloc::MiMalloc;
 
@@ -50,7 +50,7 @@ struct BtcToolkit {
     current_page: Page,
     main_page: Dashboard,
     network_config: NetworkConfig,
-    scanning_view: Option<ScanningView>,
+    scanning: Option<ScanningView>,
     active_scan: Option<Vec<network::scanner::ScanGroup>>,
     app_config: AppConfig,
 }
@@ -68,7 +68,7 @@ impl BtcToolkit {
             current_page: Page::Dashboard,
             main_page,
             network_config,
-            scanning_view: None,
+            scanning: None,
             active_scan: None,
             app_config,
         }
@@ -107,8 +107,8 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
                         .sum();
 
                     // Create scanning view and switch to it
-                    state.scanning_view = Some(ScanningView::new_multi_group(
-                        enabled_groups.len(),
+                    state.scanning = Some(ScanningView::new(
+                        enabled_groups.clone(),
                         total_ips,
                     ));
                     state.current_page = Page::Scanning;
@@ -161,35 +161,34 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
 
         BtcToolkitMessage::Scanner(scanner_msg) => {
             // Forward scanner messages to scanning view if active
-            if let Some(ref mut scanning_view) = state.scanning_view {
+            if let Some(ref mut scanning) = state.scanning {
                 match scanner_msg {
                     ScannerMessage::MinerDiscovered { group_name, miner } => {
-                        scanning_view.update(ScanningMessage::MinerFound { group_name, miner });
+                        scanning.update(ScanningMessage::MinerFound { group_name, miner });
                     }
                     ScannerMessage::GroupScanCompleted { group_name, result } => match result {
                         Ok(()) => {
-                            scanning_view.update(ScanningMessage::GroupCompleted(group_name));
+                            scanning.update(ScanningMessage::GroupCompleted(group_name));
                         }
                         Err(error) => {
-                            scanning_view.update(ScanningMessage::GroupError { group_name, error });
+                            scanning.update(ScanningMessage::GroupError { group_name, error });
                         }
                     },
                     ScannerMessage::AllScansCompleted => {
-                        scanning_view.update(ScanningMessage::AllScansCompleted);
+                        scanning.update(ScanningMessage::AllScansCompleted);
                     }
                 }
             }
             Task::none()
         }
         BtcToolkitMessage::Scanning(message) => {
-            if let Some(ref mut scanning_view) = state.scanning_view {
-                scanning_view.update(message.clone());
+            if let Some(ref mut scanning) = state.scanning {
+                scanning.update(message.clone());
 
                 match message {
                     ScanningMessage::BackToDashboard => {
                         // Copy discovered miners back to dashboard and config
-                        let discovered_miners_by_group =
-                            scanning_view.get_discovered_miners_by_group();
+                        let discovered_miners_by_group = scanning.get_discovered_miners_by_group();
 
                         // Store results in app config
                         for (group_name, miners) in discovered_miners_by_group {
@@ -204,7 +203,7 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
 
                         // Return to dashboard and stop scanning
                         state.current_page = Page::Dashboard;
-                        state.scanning_view = None;
+                        state.scanning = None;
                         state.active_scan = None;
                     }
                     ScanningMessage::StopScan => {
@@ -237,8 +236,8 @@ fn view(state: &BtcToolkit) -> Element<'_, BtcToolkitMessage> {
             .view()
             .map(BtcToolkitMessage::NetworkConfig),
         Page::Scanning => {
-            if let Some(ref scanning_view) = state.scanning_view {
-                scanning_view.view().map(BtcToolkitMessage::Scanning)
+            if let Some(ref scanning) = state.scanning {
+                scanning.view().map(BtcToolkitMessage::Scanning)
             } else {
                 // Fallback to dashboard if no scanning view
                 state.main_page.view().map(BtcToolkitMessage::Dashboard)

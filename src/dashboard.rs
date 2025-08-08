@@ -1,7 +1,7 @@
 use crate::config::AppConfig;
 use crate::network::estimate_ip_count;
 use crate::theme;
-use iced::widget::{button, column, container, row, scrollable, Space};
+use iced::widget::{Space, button, column, container, row, scrollable};
 use iced::{Element, Length};
 use std::net::Ipv4Addr;
 
@@ -88,7 +88,7 @@ impl Dashboard {
                 .padding(theme::padding::MD)
                 .width(Length::FillPortion(2))
         ]
-            .spacing(theme::spacing::MD)
+        .spacing(theme::spacing::MD)
         .height(Length::Fill);
 
         let content = column![
@@ -126,8 +126,8 @@ impl Dashboard {
             ]
             .align_y(iced::alignment::Vertical::Center),
         )
-            .style(theme::containers::header)
-            .padding(theme::padding::MD)
+        .style(theme::containers::header)
+        .padding(theme::padding::MD)
         .width(Length::Fill)
         .into()
     }
@@ -203,7 +203,7 @@ impl Dashboard {
             .padding(theme::padding::MD)
             .width(Length::FillPortion(1))
         ]
-            .spacing(theme::spacing::MD);
+        .spacing(theme::spacing::MD);
         stats.into()
     }
 
@@ -256,7 +256,7 @@ impl Dashboard {
                 }
             }
         ]
-            .spacing(theme::spacing::MD);
+        .spacing(theme::spacing::MD);
 
         // Groups overview
         let groups_section = self.view_groups_overview();
@@ -268,7 +268,7 @@ impl Dashboard {
             Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::LG)),
             groups_section
         ]
-            .spacing(theme::spacing::SM)
+        .spacing(theme::spacing::SM)
         .height(Length::Fill)
         .into()
     }
@@ -286,7 +286,7 @@ impl Dashboard {
             Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::MD)),
             results_content
         ]
-            .spacing(theme::spacing::SM)
+        .spacing(theme::spacing::SM)
         .height(Length::Fill)
         .into()
     }
@@ -299,9 +299,9 @@ impl Dashboard {
                     theme::typography::small("Use 'Configure Groups' to add network ranges")
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                    .spacing(theme::spacing::SM),
+                .spacing(theme::spacing::SM),
             )
-                .padding(theme::padding::LG)
+            .padding(theme::padding::LG)
             .into();
         }
 
@@ -336,10 +336,10 @@ impl Dashboard {
                     .padding([theme::padding::XS, theme::padding::SM])
                 ]
                 .align_y(iced::alignment::Vertical::Center)
-                    .spacing(theme::spacing::SM),
+                .spacing(theme::spacing::SM),
             )
-                .style(theme::containers::card)
-                .padding(theme::padding::SM)
+            .style(theme::containers::card)
+            .padding(theme::padding::SM)
             .width(Length::Fill);
 
             groups_list = groups_list.push(group_card);
@@ -350,7 +350,7 @@ impl Dashboard {
             Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::SM)),
             scrollable(groups_list).height(Length::Fixed(200.0))
         ]
-            .spacing(theme::spacing::XS)
+        .spacing(theme::spacing::XS)
         .into()
     }
 
@@ -364,9 +364,9 @@ impl Dashboard {
                     theme::typography::small("Run a scan to find ASIC miners on your network")
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                    .spacing(theme::spacing::SM),
+                .spacing(theme::spacing::SM),
             )
-                .padding(theme::padding::LG)
+            .padding(theme::padding::LG)
             .width(Length::Fill)
             .height(Length::Fill)
             .center_x(Length::Fill)
@@ -385,8 +385,8 @@ impl Dashboard {
             .spacing(theme::spacing::XS),
             Space::new(Length::Fill, Length::Fixed(0.0))
         ])
-            .style(theme::containers::card)
-            .padding(theme::padding::MD)
+        .style(theme::containers::card)
+        .padding(theme::padding::MD)
         .width(Length::Fill);
 
         let mut results_content = column![].spacing(theme::spacing::MD);
@@ -407,7 +407,7 @@ impl Dashboard {
                 ]
                 .align_y(iced::alignment::Vertical::Center),
             )
-                .padding(theme::padding::SM)
+            .padding(theme::padding::SM)
             .width(Length::Fill);
 
             // Miners table header
@@ -426,10 +426,10 @@ impl Dashboard {
                         .width(Length::FillPortion(2))
                         .align_x(iced::alignment::Horizontal::Center),
                 ]
-                    .spacing(theme::spacing::SM),
+                .spacing(theme::spacing::SM),
             )
-                .style(theme::containers::header)
-                .padding(theme::padding::SM)
+            .style(theme::containers::header)
+            .padding(theme::padding::SM)
             .width(Length::Fill);
 
             let mut miners_list = column![]
@@ -456,9 +456,11 @@ impl Dashboard {
                         .padding(theme::padding::XS)
                         .width(Length::FillPortion(3))
                         .on_press(DashboardMessage::OpenIpInBrowser(miner_ip)),
-                        theme::typography::body(format!("{}", miner.device_info.model).replace("Plus", "+"))
-                            .align_x(iced::alignment::Horizontal::Center)
-                            .width(Length::FillPortion(3)),
+                        theme::typography::body(
+                            format!("{}", miner.device_info.model).replace("Plus", "+")
+                        )
+                        .align_x(iced::alignment::Horizontal::Center)
+                        .width(Length::FillPortion(3)),
                         theme::typography::body(format!("{}", miner.device_info.make))
                             .align_x(iced::alignment::Horizontal::Center)
                             .width(Length::FillPortion(2)),
@@ -466,11 +468,11 @@ impl Dashboard {
                             .align_x(iced::alignment::Horizontal::Center)
                             .width(Length::FillPortion(2)),
                     ]
-                        .spacing(theme::spacing::SM)
+                    .spacing(theme::spacing::SM)
                     .align_y(iced::alignment::Vertical::Center),
                 )
-                    .style(theme::containers::card)
-                    .padding(theme::padding::SM)
+                .style(theme::containers::card)
+                .padding(theme::padding::SM)
                 .width(Length::Fill);
 
                 miners_list = miners_list.push(miner_row);
@@ -481,7 +483,7 @@ impl Dashboard {
                 table_header.padding(theme::padding::SCROLLABLE),
                 scrollable(miners_list)
             ]
-                .spacing(theme::spacing::XS);
+            .spacing(theme::spacing::XS);
 
             results_content = results_content.push(group_section);
         }

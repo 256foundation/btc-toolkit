@@ -1,26 +1,16 @@
+pub mod message;
+pub mod table;
+mod tabs;
+
+use crate::config::ScanGroup;
+use crate::scanning::tabs::ScanningTabs;
 use crate::theme;
 use asic_rs::data::miner::MinerData;
-use iced::widget::{button, column, container, progress_bar, row, scrollable, text, Space};
+use iced::widget::{button, column, container, progress_bar, row, scrollable, Space};
 use iced::{Element, Length};
+pub use message::ScanningMessage;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-
-#[derive(Debug, Clone)]
-pub enum ScanningMessage {
-    MinerFound {
-        group_name: String,
-        miner: MinerData,
-    },
-    GroupCompleted(String),
-    GroupError {
-        group_name: String,
-        error: String,
-    },
-    AllScansCompleted,
-    StopScan,
-    BackToDashboard,
-    OpenIpInBrowser(std::net::Ipv4Addr),
-}
 
 #[derive(Debug, Clone)]
 pub struct ScanningView {
@@ -32,6 +22,7 @@ pub struct ScanningView {
     start_time: Option<Instant>,
     total_ips_to_scan: usize,
     error_messages: Vec<String>,
+    scanning_tabs: ScanningTabs,
 }
 
 #[derive(Debug, Clone)]
@@ -42,25 +33,32 @@ pub struct GroupScanStatus {
 }
 
 impl ScanningView {
-    pub fn new(total_ips: usize) -> Self {
-        Self::new_multi_group(1, total_ips)
-    }
+    pub fn new(groups: Vec<&ScanGroup>, total_ips: usize) -> Self {
+        let mut tabs = HashMap::new();
+        for g in &groups {
+            tabs.insert(g.name.clone(), Vec::new());
+        }
 
-    pub fn new_multi_group(total_groups: usize, total_ips: usize) -> Self {
         Self {
             discovered_miners_by_group: HashMap::new(),
             group_status: HashMap::new(),
-            total_groups,
+            total_groups: groups.len(),
             completed_groups: 0,
             is_scanning: true,
             start_time: Some(Instant::now()),
             total_ips_to_scan: total_ips,
             error_messages: Vec::new(),
+            scanning_tabs: ScanningTabs::new(
+                groups.iter().copied().next().and_then(|i| Some(i.name.clone())).unwrap(),
+                tabs,
+            ),
         }
     }
 
     //noinspection HttpUrlsUsage
     pub fn update(&mut self, message: ScanningMessage) {
+        self.scanning_tabs.update(message.clone());
+
         match message {
             ScanningMessage::MinerFound { group_name, miner } => {
                 self.discovered_miners_by_group
@@ -122,6 +120,7 @@ impl ScanningView {
                     // Optionally, show an error message to the user in the UI
                 }
             }
+            _ => {}
         }
     }
 
@@ -151,7 +150,7 @@ impl ScanningView {
                 .height(Length::Fill)
         ]
             .spacing(theme::spacing::MD)
-        .height(Length::Fill);
+            .height(Length::Fill);
 
         let content = column![
             row![column![header]],
@@ -205,7 +204,7 @@ impl ScanningView {
             })
             .padding([theme::padding::SM, theme::padding::MD])
         ]
-        .align_y(iced::alignment::Vertical::Center);
+            .align_y(iced::alignment::Vertical::Center);
 
         container(header_row)
             .style(theme::containers::header)
@@ -324,8 +323,8 @@ impl ScanningView {
         )
             .style(theme::containers::card)
             .padding(theme::padding::MD)
-        .width(Length::Fill)
-        .into()
+            .width(Length::Fill)
+            .into()
     }
 
     fn view_control_section(&self) -> Element<'_, ScanningMessage> {
@@ -398,7 +397,7 @@ impl ScanningView {
             error_section
         ]
             .spacing(theme::spacing::SM)
-        .into()
+            .into()
     }
 
     fn view_live_results(&self) -> Element<'_, ScanningMessage> {
@@ -412,7 +411,7 @@ impl ScanningView {
             results_content
         ]
             .spacing(theme::spacing::SM)
-        .into()
+            .into()
     }
 
     fn view_error_section(&self) -> Element<'_, ScanningMessage> {
@@ -444,14 +443,14 @@ impl ScanningView {
                     theme::typography::body("Preparing scans..."),
                     theme::typography::small("Initializing network discovery")
                 ]
-                .align_x(iced::alignment::Horizontal::Center)
+                    .align_x(iced::alignment::Horizontal::Center)
                     .width(Length::Fill)
                     .spacing(theme::spacing::SM),
             )
                 .align_y(iced::alignment::Vertical::Center)
                 .height(Length::Fill)
                 .padding(theme::padding::MD)
-            .into();
+                .into();
         }
 
         let header = theme::typography::heading("Group Status");
@@ -491,12 +490,12 @@ impl ScanningView {
                         }
                     }
                 ]
-                .align_y(iced::alignment::Vertical::Center)
+                    .align_y(iced::alignment::Vertical::Center)
                     .spacing(theme::spacing::SM),
             )
                 .style(theme::containers::card)
                 .padding(theme::padding::SM)
-            .width(Length::Fill);
+                .width(Length::Fill);
 
             status_list = status_list.push(group_card);
         }
@@ -507,7 +506,7 @@ impl ScanningView {
             scrollable(status_list).height(Length::Fixed(150.0))
         ]
             .spacing(theme::spacing::XS)
-        .into()
+            .into()
     }
 
     fn view_discovered_miners(&self) -> Element<'_, ScanningMessage> {
@@ -519,15 +518,15 @@ impl ScanningView {
                         "Live results will appear here as devices are discovered"
                     )
                 ]
-                .align_x(iced::alignment::Horizontal::Center)
+                    .align_x(iced::alignment::Horizontal::Center)
                     .spacing(theme::spacing::SM),
             )
                 .padding(theme::padding::LG)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill)
-            .into();
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x(Length::Fill)
+                .center_y(Length::Fill)
+                .into();
         }
 
         let total_miners: usize = self
@@ -536,120 +535,9 @@ impl ScanningView {
             .map(|m| m.len())
             .sum();
 
-        let mut results_content = column![].spacing(theme::spacing::MD);
 
-        for (group_name, miners) in self.discovered_miners_by_group.iter() {
-            if miners.is_empty() {
-                continue;
-            }
+        let mut results_content = column![self.scanning_tabs.view()].spacing(theme::spacing::MD);
 
-            // Group header with live update indicator
-            let group_header = container(
-                row![
-                    column![
-                        theme::typography::heading(format!("{group_name}")),
-                        theme::typography::small(format!("{} miners discovered", miners.len()))
-                    ]
-                    .spacing(theme::spacing::XS),
-                    Space::new(Length::Fill, Length::Fixed(0.0)),
-                    if self.is_scanning {
-                        container(
-                            row![theme::typography::tiny("Live")]
-                                .spacing(theme::spacing::XS)
-                                .align_y(iced::alignment::Vertical::Center),
-                        )
-                        .style(theme::containers::warning)
-                        .padding([theme::padding::XS, theme::padding::SM])
-                    } else {
-                        container(text(""))
-                    }
-                ]
-                .align_y(iced::alignment::Vertical::Center),
-            )
-                .padding(theme::padding::SM)
-            .width(Length::Fill);
-
-            // Table header
-            let table_header = container(
-                row![
-                    theme::typography::small("IP Address")
-                        .align_x(iced::alignment::Horizontal::Center)
-                        .width(Length::FillPortion(3)),
-                    theme::typography::small("Model")
-                        .align_x(iced::alignment::Horizontal::Center)
-                        .width(Length::FillPortion(3)),
-                    theme::typography::small("Make")
-                        .align_x(iced::alignment::Horizontal::Center)
-                        .width(Length::FillPortion(2)),
-                    theme::typography::small("Firmware")
-                        .align_x(iced::alignment::Horizontal::Center)
-                        .width(Length::FillPortion(2)),
-                    theme::typography::small("Firmware Version")
-                        .align_x(iced::alignment::Horizontal::Center)
-                        .width(Length::FillPortion(2)),
-                ]
-                    .spacing(theme::spacing::SM),
-            )
-                .style(theme::containers::header)
-                .padding(theme::padding::SM)
-            .width(Length::Fill);
-
-            let mut miners_list = column![]
-                .spacing(theme::spacing::XS)
-                .padding(theme::padding::SCROLLABLE);
-
-            // Sort miners by IP for consistent display
-            let mut sorted_miners = miners.clone();
-            sorted_miners.sort_by_key(|m| m.ip);
-
-            for miner in sorted_miners {
-                let miner_ip = match miner.ip {
-                    std::net::IpAddr::V4(ipv4) => ipv4,
-                    std::net::IpAddr::V6(_) => continue, // Skip IPv6 addresses for now
-                };
-
-                let miner_row = container(
-                    row![
-                        button(
-                            theme::typography::mono(miner_ip.to_string())
-                                .align_x(iced::alignment::Horizontal::Center)
-                        )
-                        .style(button::text)
-                        .padding(theme::padding::XS)
-                        .width(Length::FillPortion(3))
-                        .on_press(ScanningMessage::OpenIpInBrowser(miner_ip)),
-                        theme::typography::body(format!("{}", miner.device_info.model).replace("Plus", "+"))
-                            .align_x(iced::alignment::Horizontal::Center)
-                            .width(Length::FillPortion(3)),
-                        theme::typography::body(format!("{}", miner.device_info.make))
-                            .align_x(iced::alignment::Horizontal::Center)
-                            .width(Length::FillPortion(2)),
-                        theme::typography::body(format!("{}", miner.device_info.firmware))
-                            .align_x(iced::alignment::Horizontal::Center)
-                            .width(Length::FillPortion(2)),
-                        theme::typography::body(format!("{}", miner.firmware_version.unwrap_or("-".into())))
-                            .align_x(iced::alignment::Horizontal::Center)
-                            .width(Length::FillPortion(2)),
-                    ]
-                        .spacing(theme::spacing::SM)
-                    .align_y(iced::alignment::Vertical::Center),
-                )
-                    .style(theme::containers::card)
-                    .padding(theme::padding::SM)
-                .width(Length::Fill);
-
-                miners_list = miners_list.push(miner_row);
-            }
-
-            let group_section = column![
-                group_header,
-                table_header.padding(theme::padding::SCROLLABLE),
-                scrollable(miners_list)
-            ]
-                .spacing(theme::spacing::XS);
-
-            results_content = results_content.push(group_section);
-        }
 
         // Summary at the top if multiple groups
         if self.discovered_miners_by_group.len() > 1 {
@@ -658,7 +546,7 @@ impl ScanningView {
             )))
                 .style(theme::containers::success)
                 .padding(theme::padding::MD)
-            .width(Length::Fill);
+                .width(Length::Fill);
 
             column![summary, results_content]
                 .spacing(theme::spacing::MD)
