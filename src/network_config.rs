@@ -2,8 +2,9 @@ use crate::config::{AppConfig, ScanGroup};
 use crate::network::scanner::ScanConfig;
 use crate::theme::{self, BtcTheme};
 use asic_rs::data::device::{MinerFirmware, MinerMake};
-use iced::widget::{Space, button, checkbox, column, container, row, scrollable, text, text_input};
+use iced::widget::{button, checkbox, column, container, row, scrollable, text, text_input, Space};
 use iced::{Element, Length};
+use std::collections::HashSet;
 
 #[derive(Clone, Debug)]
 pub struct NetworkConfig {
@@ -11,11 +12,8 @@ pub struct NetworkConfig {
     // UI state for group editing
     editing_group: Option<EditingGroup>,
     // UI state for filters (applied to currently editing group)
-    filter_antminers: bool,
-    filter_whatsminers: bool,
-    filter_avalonminers: bool,
-    filter_braiins_os: bool,
-    filter_stock_firmware: bool,
+    search_firmwares: HashSet<MinerFirmware>,
+    search_makes: HashSet<MinerMake>,
 }
 
 #[derive(Clone, Debug)]
@@ -42,11 +40,8 @@ pub enum NetworkConfigMessage {
     SaveGroup,
     CancelGroupEdit,
     // Filter toggles (for currently editing group)
-    ToggleAntMiners(bool),
-    ToggleWhatsMiners(bool),
-    ToggleAvalonMiners(bool),
-    ToggleBraiinsOS(bool),
-    ToggleStockFirmware(bool),
+    ToggleFirmware(MinerFirmware, bool),
+    ToggleMake(MinerMake, bool),
 }
 
 impl NetworkConfig {
@@ -54,11 +49,8 @@ impl NetworkConfig {
         Self {
             app_config: AppConfig::default(),
             editing_group: None,
-            filter_antminers: false,
-            filter_whatsminers: false,
-            filter_avalonminers: false,
-            filter_braiins_os: false,
-            filter_stock_firmware: false,
+            search_makes: HashSet::new(),
+            search_firmwares: HashSet::new(),
         }
     }
 
@@ -141,20 +133,19 @@ impl NetworkConfig {
                 self.editing_group = None;
                 self.reset_filters();
             }
-            NetworkConfigMessage::ToggleAntMiners(enabled) => {
-                self.filter_antminers = enabled;
+            NetworkConfigMessage::ToggleFirmware(firmware, enable) => {
+                if enable {
+                    self.search_firmwares.insert(firmware);
+                } else {
+                    self.search_firmwares.remove(&firmware);
+                }
             }
-            NetworkConfigMessage::ToggleWhatsMiners(enabled) => {
-                self.filter_whatsminers = enabled;
-            }
-            NetworkConfigMessage::ToggleAvalonMiners(enabled) => {
-                self.filter_avalonminers = enabled;
-            }
-            NetworkConfigMessage::ToggleBraiinsOS(enabled) => {
-                self.filter_braiins_os = enabled;
-            }
-            NetworkConfigMessage::ToggleStockFirmware(enabled) => {
-                self.filter_stock_firmware = enabled;
+            NetworkConfigMessage::ToggleMake(make, enable) => {
+                if enable {
+                    self.search_makes.insert(make);
+                } else {
+                    self.search_makes.remove(&make);
+                }
             }
             // Close and Save are handled in main app
             NetworkConfigMessage::Close | NetworkConfigMessage::Save => {}
@@ -162,58 +153,29 @@ impl NetworkConfig {
     }
 
     fn reset_filters(&mut self) {
-        self.filter_antminers = false;
-        self.filter_whatsminers = false;
-        self.filter_avalonminers = false;
-        self.filter_braiins_os = false;
-        self.filter_stock_firmware = false;
+        self.search_firmwares.clear();
+        self.search_makes.clear();
     }
 
     fn load_filters_from_group(&mut self, scan_config: &ScanConfig) {
         self.reset_filters();
 
         if let Some(ref makes) = scan_config.search_makes {
-            for make in makes {
-                match make {
-                    MinerMake::AntMiner => self.filter_antminers = true,
-                    MinerMake::WhatsMiner => self.filter_whatsminers = true,
-                    MinerMake::AvalonMiner => self.filter_avalonminers = true,
-                    _ => {}
-                }
-            }
+            makes.iter().for_each(|make| {
+                self.search_makes.insert(make.clone());
+            });
         }
 
         if let Some(ref firmwares) = scan_config.search_firmwares {
-            for firmware in firmwares {
-                match firmware {
-                    MinerFirmware::BraiinsOS => self.filter_braiins_os = true,
-                    MinerFirmware::Stock => self.filter_stock_firmware = true,
-                    _ => {}
-                }
-            }
+            firmwares.iter().for_each(|firmware| {
+                self.search_firmwares.insert(firmware.clone());
+            });
         }
     }
 
     fn build_scan_config(&self) -> ScanConfig {
-        let mut makes = Vec::new();
-        let mut firmwares = Vec::new();
-
-        if self.filter_antminers {
-            makes.push(MinerMake::AntMiner);
-        }
-        if self.filter_whatsminers {
-            makes.push(MinerMake::WhatsMiner);
-        }
-        if self.filter_avalonminers {
-            makes.push(MinerMake::AvalonMiner);
-        }
-
-        if self.filter_braiins_os {
-            firmwares.push(MinerFirmware::BraiinsOS);
-        }
-        if self.filter_stock_firmware {
-            firmwares.push(MinerFirmware::Stock);
-        }
+        let mut makes = Vec::from_iter(self.search_makes.iter().cloned());
+        let mut firmwares = Vec::from_iter(self.search_firmwares.iter().cloned());
 
         ScanConfig {
             search_makes: if makes.is_empty() { None } else { Some(makes) },
@@ -508,15 +470,24 @@ impl NetworkConfig {
                                 theme::typography::body("Miner Manufacturers:"),
                                 Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_SM)),
 
-                                checkbox("AntMiner (Bitmain)", self.filter_antminers)
+                                checkbox("AntMiner (Bitmain)", self.search_makes.contains(&MinerMake::AntMiner))
                                     .style(theme::checkbox_styles::default)
-                                    .on_toggle(NetworkConfigMessage::ToggleAntMiners),
-                                checkbox("WhatsMiner (MicroBT)", self.filter_whatsminers)
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::AntMiner, value)),
+                                checkbox("WhatsMiner (MicroBT)", self.search_makes.contains(&MinerMake::WhatsMiner))
                                     .style(theme::checkbox_styles::default)
-                                    .on_toggle(NetworkConfigMessage::ToggleWhatsMiners),
-                                checkbox("AvalonMiner (Canaan)", self.filter_avalonminers)
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::WhatsMiner, value)),
+                                checkbox("AvalonMiner (Canaan)", self.search_makes.contains(&MinerMake::AvalonMiner))
                                     .style(theme::checkbox_styles::default)
-                                    .on_toggle(NetworkConfigMessage::ToggleAvalonMiners),
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::AvalonMiner, value)),
+                                checkbox("BitAxe", self.search_makes.contains(&MinerMake::BitAxe))
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::BitAxe, value)),
+                                checkbox("ePIC", self.search_makes.contains(&MinerMake::EPic))
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::EPic, value)),
+                                checkbox("Braiins", self.search_makes.contains(&MinerMake::Braiins))
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::Braiins, value)),
                             ]
                             .spacing(theme::layout::SPACING_SM)
                         )
@@ -530,12 +501,21 @@ impl NetworkConfig {
                                 theme::typography::body("Firmware Types:"),
                                 Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_SM)),
 
-                                checkbox("Braiins OS (Custom)", self.filter_braiins_os)
+                                checkbox("Braiins OS", self.search_firmwares.contains(&MinerFirmware::BraiinsOS))
                                     .style(theme::checkbox_styles::default)
-                                    .on_toggle(NetworkConfigMessage::ToggleBraiinsOS),
-                                checkbox("Stock Firmware (Factory)", self.filter_stock_firmware)
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleFirmware(MinerFirmware::BraiinsOS, value)),
+                                checkbox("ePIC UMC", self.search_firmwares.contains(&MinerFirmware::EPic))
                                     .style(theme::checkbox_styles::default)
-                                    .on_toggle(NetworkConfigMessage::ToggleStockFirmware),
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleFirmware(MinerFirmware::EPic, value)),
+                                checkbox("Luxor OS", self.search_firmwares.contains(&MinerFirmware::LuxOS))
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleFirmware(MinerFirmware::LuxOS, value)),
+                                checkbox("VNish", self.search_firmwares.contains(&MinerFirmware::VNish))
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleFirmware(MinerFirmware::VNish, value)),
+                                checkbox("Mara FW", self.search_firmwares.contains(&MinerFirmware::Marathon))
+                                    .style(theme::checkbox_styles::default)
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleFirmware(MinerFirmware::Marathon, value)),
                             ]
                         .spacing(theme::layout::SPACING_SM)
                         )
