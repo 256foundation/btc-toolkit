@@ -1,7 +1,7 @@
 use crate::config::AppConfig;
 use crate::network::estimate_ip_count;
-use crate::theme::{self, BtcTheme};
-use iced::widget::{Space, button, column, container, row, scrollable};
+use crate::theme;
+use iced::widget::{button, column, container, row, scrollable, Space};
 use iced::{Element, Length};
 use std::net::Ipv4Addr;
 
@@ -32,6 +32,7 @@ impl Dashboard {
         self.app_config = config;
     }
 
+    //noinspection HttpUrlsUsage
     pub fn update(&mut self, message: DashboardMessage) -> iced::Task<DashboardMessage> {
         match message {
             DashboardMessage::OpenNetworkConfig => {
@@ -68,8 +69,6 @@ impl Dashboard {
     }
 
     pub fn view(&self) -> Element<'_, DashboardMessage> {
-        let _theme = BtcTheme::default();
-
         // Header with title and system status
         let header = self.view_header();
 
@@ -80,24 +79,24 @@ impl Dashboard {
         let main_content = row![
             // Left panel: Groups and controls
             container(self.view_control_panel())
-                .style(theme::container_styles::card)
-                .padding(theme::layout::PADDING_MD)
+                .style(theme::containers::card)
+                .padding(theme::padding::MD)
                 .width(Length::FillPortion(1)),
             // Right panel: Results and monitoring
             container(self.view_results_panel())
-                .style(theme::container_styles::card)
-                .padding(theme::layout::PADDING_MD)
+                .style(theme::containers::card)
+                .padding(theme::padding::MD)
                 .width(Length::FillPortion(2))
         ]
-        .spacing(theme::layout::SPACING_MD)
+            .spacing(theme::spacing::MD)
         .height(Length::Fill);
 
         let content = column![
             row![column![header]],
             row![
                 column![stats_cards, main_content]
-                    .spacing(theme::layout::SPACING_MD)
-                    .padding(theme::layout::PADDING_MD)
+                    .spacing(theme::spacing::MD)
+                    .padding(theme::padding::MD)
             ]
         ];
 
@@ -108,35 +107,32 @@ impl Dashboard {
     }
 
     fn view_header(&self) -> Element<'_, DashboardMessage> {
-        let _theme = BtcTheme::default();
-
         container(
             row![
                 column![
                     theme::typography::title("BTC Farm Management"),
                     theme::typography::small("Bitcoin ASIC Miner Control Center")
                 ]
-                .spacing(theme::layout::SPACING_XS),
+                .spacing(theme::spacing::XS),
                 Space::new(Length::Fill, Length::Fixed(0.0)),
                 // System status indicator
                 container(
                     row![theme::typography::body("System Online")]
-                        .spacing(theme::layout::SPACING_XS)
+                        .spacing(theme::spacing::XS)
                         .align_y(iced::alignment::Vertical::Center)
                 )
-                .style(theme::container_styles::card)
-                .padding(theme::layout::PADDING_SM)
+                .style(theme::containers::card)
+                .padding(theme::padding::SM)
             ]
             .align_y(iced::alignment::Vertical::Center),
         )
-        .style(theme::container_styles::header)
-        .padding(theme::layout::PADDING_MD)
+            .style(theme::containers::header)
+            .padding(theme::padding::MD)
         .width(Length::Fill)
         .into()
     }
 
     fn view_stats_cards(&self) -> Element<'_, DashboardMessage> {
-        let _theme = BtcTheme::default();
         let enabled_groups = self.app_config.get_enabled_groups();
         let all_results = self.app_config.get_all_scan_results();
         let total_miners: usize = all_results.values().map(|miners| miners.len()).sum();
@@ -154,10 +150,10 @@ impl Dashboard {
                     theme::typography::tiny(format!("{} enabled", enabled_groups.len()))
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                .spacing(theme::layout::SPACING_XS)
+                .spacing(theme::spacing::XS)
             )
-            .style(theme::container_styles::card)
-            .padding(theme::layout::PADDING_MD)
+            .style(theme::containers::card)
+            .padding(theme::padding::MD)
             .align_x(iced::alignment::Horizontal::Center)
             .width(Length::FillPortion(1)),
             // IP ranges card
@@ -168,10 +164,10 @@ impl Dashboard {
                     theme::typography::tiny("to scan")
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                .spacing(theme::layout::SPACING_XS)
+                .spacing(theme::spacing::XS)
             )
-            .style(theme::container_styles::card)
-            .padding(theme::layout::PADDING_MD)
+            .style(theme::containers::card)
+            .padding(theme::padding::MD)
             .align_x(iced::alignment::Horizontal::Center)
             .width(Length::FillPortion(1)),
             // Discovered miners card
@@ -182,10 +178,10 @@ impl Dashboard {
                     theme::typography::tiny("last scan")
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                .spacing(theme::layout::SPACING_XS)
+                .spacing(theme::spacing::XS)
             )
-            .style(theme::container_styles::card)
-            .padding(theme::layout::PADDING_MD)
+            .style(theme::containers::card)
+            .padding(theme::padding::MD)
             .align_x(iced::alignment::Horizontal::Center)
             .width(Length::FillPortion(1)),
             // Scan status card
@@ -196,23 +192,22 @@ impl Dashboard {
                     theme::typography::tiny(if self.scanning { "in progress" } else { "idle" })
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                .spacing(theme::layout::SPACING_XS)
+                .spacing(theme::spacing::XS)
             )
             .style(if self.scanning {
-                theme::container_styles::status_warning
+                theme::containers::warning
             } else {
-                theme::container_styles::card
+                theme::containers::card
             })
             .align_x(iced::alignment::Horizontal::Center)
-            .padding(theme::layout::PADDING_MD)
+            .padding(theme::padding::MD)
             .width(Length::FillPortion(1))
         ]
-        .spacing(theme::layout::SPACING_MD);
+            .spacing(theme::spacing::MD);
         stats.into()
     }
 
     fn view_control_panel(&self) -> Element<'_, DashboardMessage> {
-        let _theme = BtcTheme::default();
         let enabled_groups = self.app_config.get_enabled_groups();
 
         let panel_header = row![
@@ -228,11 +223,11 @@ impl Dashboard {
                         .align_x(iced::alignment::Horizontal::Center)
                         .width(Length::Fill)
                 ]
-                .spacing(theme::layout::SPACING_SM)
+                .spacing(theme::spacing::SM)
                 .align_y(iced::alignment::Vertical::Center)
             )
             .style(button::secondary)
-            .padding(theme::layout::PADDING_SM)
+            .padding(theme::padding::SM)
             .width(Length::Fill)
             .on_press(DashboardMessage::OpenNetworkConfig),
             // Scan button
@@ -240,12 +235,12 @@ impl Dashboard {
                 if enabled_groups.is_empty() {
                     button(theme::typography::body("No Groups Enabled"))
                         .style(button::secondary)
-                        .padding(theme::layout::PADDING_SM)
+                        .padding(theme::padding::SM)
                         .width(Length::Fill)
                 } else if self.scanning {
                     button(theme::typography::body("Stop Scan"))
                         .style(button::danger)
-                        .padding(theme::layout::PADDING_SM)
+                        .padding(theme::padding::SM)
                         .width(Length::Fill)
                         .on_press(DashboardMessage::StopScan)
                 } else {
@@ -255,32 +250,30 @@ impl Dashboard {
                             .width(Length::Fill),
                     )
                     .style(button::primary)
-                    .padding(theme::layout::PADDING_SM)
+                    .padding(theme::padding::SM)
                     .width(Length::Fill)
                     .on_press(DashboardMessage::StartScan)
                 }
             }
         ]
-        .spacing(theme::layout::SPACING_MD);
+            .spacing(theme::spacing::MD);
 
         // Groups overview
         let groups_section = self.view_groups_overview();
 
         column![
             panel_header,
-            Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_MD)),
+            Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::MD)),
             controls,
-            Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_LG)),
+            Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::LG)),
             groups_section
         ]
-        .spacing(theme::layout::SPACING_SM)
+            .spacing(theme::spacing::SM)
         .height(Length::Fill)
         .into()
     }
 
     fn view_results_panel(&self) -> Element<'_, DashboardMessage> {
-        let _theme = BtcTheme::default();
-
         let panel_header = row![
             theme::typography::heading("Mining Operations"),
             Space::new(Length::Fill, Length::Fixed(0.0))
@@ -290,17 +283,15 @@ impl Dashboard {
 
         column![
             panel_header,
-            Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_MD)),
+            Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::MD)),
             results_content
         ]
-        .spacing(theme::layout::SPACING_SM)
+            .spacing(theme::spacing::SM)
         .height(Length::Fill)
         .into()
     }
 
     fn view_groups_overview(&self) -> Element<'_, DashboardMessage> {
-        let _theme = BtcTheme::default();
-
         if self.app_config.scan_groups.is_empty() {
             return container(
                 column![
@@ -308,15 +299,15 @@ impl Dashboard {
                     theme::typography::small("Use 'Configure Groups' to add network ranges")
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                .spacing(theme::layout::SPACING_SM),
+                    .spacing(theme::spacing::SM),
             )
-            .padding(theme::layout::PADDING_LG)
+                .padding(theme::padding::LG)
             .into();
         }
 
         let header = theme::typography::heading("Scan Groups");
 
-        let mut groups_list = column![].spacing(theme::layout::SPACING_SM);
+        let mut groups_list = column![].spacing(theme::spacing::SM);
 
         for group in &self.app_config.scan_groups {
             let estimated_ips = estimate_ip_count(&group.network_range);
@@ -325,12 +316,12 @@ impl Dashboard {
                 row![
                     column![
                         row![theme::typography::body(&group.name)]
-                            .spacing(theme::layout::SPACING_XS)
+                            .spacing(theme::spacing::XS)
                             .align_y(iced::alignment::Vertical::Center),
                         theme::typography::mono(&group.network_range),
                         theme::typography::tiny(format!("~{estimated_ips} IPs"))
                     ]
-                    .spacing(theme::layout::SPACING_XS)
+                    .spacing(theme::spacing::XS)
                     .width(Length::Fill),
                     container(theme::typography::small(if group.enabled {
                         "ENABLED"
@@ -338,17 +329,17 @@ impl Dashboard {
                         "DISABLED"
                     }))
                     .style(if group.enabled {
-                        theme::container_styles::status_success
+                        theme::containers::success
                     } else {
-                        theme::container_styles::card
+                        theme::containers::card
                     })
-                    .padding([theme::layout::PADDING_XS, theme::layout::PADDING_SM])
+                    .padding([theme::padding::XS, theme::padding::SM])
                 ]
                 .align_y(iced::alignment::Vertical::Center)
-                .spacing(theme::layout::SPACING_SM),
+                    .spacing(theme::spacing::SM),
             )
-            .style(theme::container_styles::card)
-            .padding(theme::layout::PADDING_SM)
+                .style(theme::containers::card)
+                .padding(theme::padding::SM)
             .width(Length::Fill);
 
             groups_list = groups_list.push(group_card);
@@ -356,15 +347,14 @@ impl Dashboard {
 
         column![
             header,
-            Space::new(Length::Fixed(0.0), Length::Fixed(theme::layout::SPACING_SM)),
+            Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::SM)),
             scrollable(groups_list).height(Length::Fixed(200.0))
         ]
-        .spacing(theme::layout::SPACING_XS)
+            .spacing(theme::spacing::XS)
         .into()
     }
 
     fn view_scan_results(&self) -> Element<'_, DashboardMessage> {
-        let _theme = BtcTheme::default();
         let all_results = self.app_config.get_all_scan_results();
 
         if all_results.is_empty() {
@@ -374,9 +364,9 @@ impl Dashboard {
                     theme::typography::small("Run a scan to find ASIC miners on your network")
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                .spacing(theme::layout::SPACING_SM),
+                    .spacing(theme::spacing::SM),
             )
-            .padding(theme::layout::PADDING_LG)
+                .padding(theme::padding::LG)
             .width(Length::Fill)
             .height(Length::Fill)
             .center_x(Length::Fill)
@@ -392,14 +382,14 @@ impl Dashboard {
                 theme::typography::heading(format!("{total_miners} Miners Online")),
                 theme::typography::small(format!("Across {} groups", all_results.len()))
             ]
-            .spacing(theme::layout::SPACING_XS),
+            .spacing(theme::spacing::XS),
             Space::new(Length::Fill, Length::Fixed(0.0))
         ])
-        .style(theme::container_styles::card)
-        .padding(theme::layout::PADDING_MD)
+            .style(theme::containers::card)
+            .padding(theme::padding::MD)
         .width(Length::Fill);
 
-        let mut results_content = column![].spacing(theme::layout::SPACING_MD);
+        let mut results_content = column![].spacing(theme::spacing::MD);
 
         for (group_name, miners) in all_results.iter() {
             if miners.is_empty() {
@@ -409,32 +399,42 @@ impl Dashboard {
             // Group section header
             let group_header = container(
                 row![
-                    theme::typography::heading(format!("📊 {group_name}")),
+                    theme::typography::heading(format!("{group_name}")),
                     Space::new(Length::Fill, Length::Fixed(0.0)),
                     container(theme::typography::small(format!("{} miners", miners.len())))
-                        .style(theme::container_styles::status_success)
-                        .padding([theme::layout::PADDING_XS, theme::layout::PADDING_SM])
+                        .style(theme::containers::success)
+                        .padding([theme::padding::XS, theme::padding::SM])
                 ]
                 .align_y(iced::alignment::Vertical::Center),
             )
-            .padding(theme::layout::PADDING_SM)
+                .padding(theme::padding::SM)
             .width(Length::Fill);
 
             // Miners table header
             let table_header = container(
                 row![
-                    theme::typography::small("IP Address").width(Length::FillPortion(3)),
-                    theme::typography::small("Model").width(Length::FillPortion(3)),
-                    theme::typography::small("Make").width(Length::FillPortion(2)),
-                    theme::typography::small("Firmware").width(Length::FillPortion(2)),
+                    theme::typography::small("IP Address")
+                        .width(Length::FillPortion(3))
+                        .align_x(iced::alignment::Horizontal::Center),
+                    theme::typography::small("Model")
+                        .width(Length::FillPortion(3))
+                        .align_x(iced::alignment::Horizontal::Center),
+                    theme::typography::small("Make")
+                        .width(Length::FillPortion(2))
+                        .align_x(iced::alignment::Horizontal::Center),
+                    theme::typography::small("Firmware")
+                        .width(Length::FillPortion(2))
+                        .align_x(iced::alignment::Horizontal::Center),
                 ]
-                .spacing(theme::layout::SPACING_SM),
+                    .spacing(theme::spacing::SM),
             )
-            .style(theme::container_styles::header)
-            .padding(theme::layout::PADDING_SM)
+                .style(theme::containers::header)
+                .padding(theme::padding::SM)
             .width(Length::Fill);
 
-            let mut miners_list = column![].spacing(theme::layout::SPACING_XS);
+            let mut miners_list = column![]
+                .spacing(theme::spacing::XS)
+                .padding(theme::padding::SCROLLABLE);
 
             // Sort miners by IP address for consistent display
             let mut sorted_miners = miners.clone();
@@ -448,23 +448,29 @@ impl Dashboard {
 
                 let miner_row = container(
                     row![
-                        button(theme::typography::mono(miner_ip.to_string()))
-                            .style(button::text)
-                            .padding(theme::layout::PADDING_XS)
-                            .width(Length::FillPortion(3))
-                            .on_press(DashboardMessage::OpenIpInBrowser(miner_ip)),
-                        theme::typography::body(format!("{:?}", miner.device_info.model))
+                        button(
+                            theme::typography::mono(miner_ip.to_string())
+                                .align_x(iced::alignment::Horizontal::Center)
+                        )
+                        .style(button::text)
+                        .padding(theme::padding::XS)
+                        .width(Length::FillPortion(3))
+                        .on_press(DashboardMessage::OpenIpInBrowser(miner_ip)),
+                        theme::typography::body(format!("{}", miner.device_info.model).replace("Plus", "+"))
+                            .align_x(iced::alignment::Horizontal::Center)
                             .width(Length::FillPortion(3)),
-                        theme::typography::body(format!("{:?}", miner.device_info.make))
+                        theme::typography::body(format!("{}", miner.device_info.make))
+                            .align_x(iced::alignment::Horizontal::Center)
                             .width(Length::FillPortion(2)),
-                        theme::typography::body(format!("{:?}", miner.device_info.firmware))
+                        theme::typography::body(format!("{}", miner.device_info.firmware))
+                            .align_x(iced::alignment::Horizontal::Center)
                             .width(Length::FillPortion(2)),
                     ]
-                    .spacing(theme::layout::SPACING_SM)
+                        .spacing(theme::spacing::SM)
                     .align_y(iced::alignment::Vertical::Center),
                 )
-                .style(theme::container_styles::card)
-                .padding(theme::layout::PADDING_SM)
+                    .style(theme::containers::card)
+                    .padding(theme::padding::SM)
                 .width(Length::Fill);
 
                 miners_list = miners_list.push(miner_row);
@@ -472,19 +478,16 @@ impl Dashboard {
 
             let group_section = column![
                 group_header,
-                table_header,
-                scrollable(miners_list).height(Length::Fixed(200.0))
+                table_header.padding(theme::padding::SCROLLABLE),
+                scrollable(miners_list)
             ]
-            .spacing(theme::layout::SPACING_XS);
+                .spacing(theme::spacing::XS);
 
             results_content = results_content.push(group_section);
         }
 
-        column![
-            summary_header,
-            scrollable(results_content).height(Length::Fill)
-        ]
-        .spacing(theme::layout::SPACING_MD)
-        .into()
+        column![summary_header, results_content]
+            .spacing(theme::spacing::MD)
+            .into()
     }
 }

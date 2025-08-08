@@ -33,9 +33,9 @@ async fn main() -> iced::Result {
             ..window::Settings::default()
         })
         // Apply Bitcoin-inspired theme
-        .theme(|_| crate::theme::btc_theme())
+        .theme(|_| theme::THEME)
         // Run with initial state
-        .run_with(|| (BtcToolkit::new(), iced::Task::none()))
+        .run_with(|| (BtcToolkit::new(), Task::none()))
 }
 
 // Enum to track which page is currently active
@@ -51,7 +51,7 @@ struct BtcToolkit {
     main_page: Dashboard,
     network_config: NetworkConfig,
     scanning_view: Option<ScanningView>,
-    active_scan: Option<Vec<crate::network::scanner::ScanGroup>>,
+    active_scan: Option<Vec<network::scanner::ScanGroup>>,
     app_config: AppConfig,
 }
 
@@ -90,13 +90,13 @@ enum BtcToolkitMessage {
 }
 
 // Update function for the application
-fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> iced::Task<BtcToolkitMessage> {
+fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkitMessage> {
     match message {
         BtcToolkitMessage::Dashboard(message) => {
             match message {
                 DashboardMessage::OpenNetworkConfig => {
                     state.current_page = Page::NetworkConfig;
-                    iced::Task::none()
+                    Task::none()
                 }
                 DashboardMessage::NavigateToScanning => {
                     // Get enabled groups for scanning
@@ -114,10 +114,10 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> iced::Task<BtcT
                     state.current_page = Page::Scanning;
 
                     // Set active scan for subscription - collect all enabled groups
-                    let active_scans: Vec<crate::network::scanner::ScanGroup> = enabled_groups
+                    let active_scans: Vec<network::scanner::ScanGroup> = enabled_groups
                         .into_iter()
                         .map(|group| {
-                            crate::network::scanner::ScanGroup::new(
+                            network::scanner::ScanGroup::new(
                                 group.name.clone(),
                                 group.network_range.clone(),
                                 group.scan_config.clone(),
@@ -145,7 +145,7 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> iced::Task<BtcT
             match message {
                 NetworkConfigMessage::Close => {
                     state.current_page = Page::Dashboard;
-                    iced::Task::none()
+                    Task::none()
                 }
                 NetworkConfigMessage::Save => {
                     // Update app config from network config
@@ -153,9 +153,9 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> iced::Task<BtcT
                     state.main_page.set_app_config(state.app_config.clone());
                     state.save_config();
                     state.current_page = Page::Dashboard;
-                    iced::Task::none()
+                    Task::none()
                 }
-                _ => iced::Task::none(),
+                _ => Task::none(),
             }
         }
 
@@ -179,7 +179,7 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> iced::Task<BtcT
                     }
                 }
             }
-            iced::Task::none()
+            Task::none()
         }
         BtcToolkitMessage::Scanning(message) => {
             if let Some(ref mut scanning_view) = state.scanning_view {
@@ -214,7 +214,7 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> iced::Task<BtcT
                     _ => {}
                 }
             }
-            iced::Task::none()
+            Task::none()
         }
     }
 }
