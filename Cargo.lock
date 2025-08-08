@@ -144,7 +144,7 @@ dependencies = [
 [[package]]
 name = "asic-rs"
 version = "0.1.0"
-source = "git+https://github.com/b-rowan/asic-rs?branch=add-traits#c457994fd401b48d01927ddf3a0ceaf0a1ca1329"
+source = "git+https://github.com/256-Foundation/asic-rs?branch=master#4a51dc751856a32ccca059fd40eeb9e2905984f3"
 dependencies = [
  "anyhow",
  "async-trait",

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BTC Toolkit is a Rust GUI application for managing Bitcoin ASIC mining farms, built with the Iced framework. It provides real-time network scanning, miner discovery, and farm management capabilities through a professional Bitcoin-themed interface.
+BTC Toolkit is a Rust GUI application for managing Bitcoin ASIC mining farms, built with the Iced framework. It provides real-time network scanning, miner discovery, and farm management capabilities.
 
 ## Development Commands
 
@@ -12,11 +12,20 @@ BTC Toolkit is a Rust GUI application for managing Bitcoin ASIC mining farms, bu
 # Quick compilation check
 cargo check
 
-# Run the application
-cargo run
+# Run the application (with backtrace for debugging)
+RUST_BACKTRACE=1 cargo run
+# Or use the Makefile:
+make run
 
 # Build optimized release
 cargo build --release
+
+# Cross-platform builds
+make build-linux    # x86_64-unknown-linux-gnu
+make build-windows  # x86_64-pc-windows-gnu (requires gcc-mingw-w64)
+
+# Install locally
+cargo install --path .
 
 # Run tests
 cargo test
@@ -26,6 +35,11 @@ cargo fmt
 
 # Run linter
 cargo clippy
+
+# Clean build artifacts
+cargo clean
+# Or:
+make clean
 ```
 
 ## Architecture Overview
@@ -70,8 +84,9 @@ The most architecturally complex interaction is the "Scanning Session" lifecycle
 ### Network Module Utilities
 
 Shared utilities in `src/network/mod.rs` eliminate code duplication:
+
 - `create_miner_factory(network_range)` - Basic factory from network range
-- `create_configured_miner_factory(network_range, config)` - Factory with filters applied  
+- `create_configured_miner_factory(network_range, config)` - Factory with filters applied
 - `estimate_ip_count(network_range)` - IP count estimation
 
 ## Key Dependencies
@@ -85,6 +100,7 @@ Shared utilities in `src/network/mod.rs` eliminate code duplication:
 ## Configuration Management
 
 Application state persists to `btc_toolkit_config.json` containing:
+
 - Scan groups with network ranges (CIDR or IP range notation)
 - Miner filtering configuration (manufacturer and firmware filters)
 - Last scan results and group enable/disable states
@@ -93,8 +109,8 @@ The config uses automatic fallback creation if the file doesn't exist or fails t
 
 ## Build Optimizations
 
-Release builds are optimized for performance:
+Release builds are optimized for performance (see `Cargo.toml`):
+
 - LTO (Link Time Optimization) enabled
 - Symbol stripping for smaller binaries
 - Single codegen unit for maximum optimization
-- Secure memory allocator for enhanced security
