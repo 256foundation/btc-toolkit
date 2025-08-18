@@ -137,6 +137,11 @@ impl AppConfig {
     pub fn get_all_scan_results(&self) -> &HashMap<String, Vec<MinerData>> {
         &self.last_scan_results
     }
+
+    /// Clear all scan results
+    pub fn clear_scan_results(&mut self) {
+        self.last_scan_results.clear();
+    }
 }
 
 #[cfg(test)]

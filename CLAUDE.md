@@ -27,9 +27,6 @@ make build-windows  # x86_64-pc-windows-gnu (requires gcc-mingw-w64)
 # Install locally
 cargo install --path .
 
-# Run tests
-cargo test
-
 # Format code
 cargo fmt
 
