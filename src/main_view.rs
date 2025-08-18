@@ -19,6 +19,12 @@ pub enum MainViewMessage {
         group_name: String,
         miner: MinerData,
     },
+    IpScanned {
+        group_name: String,
+        ip: std::net::IpAddr,
+        total_ips: usize,
+        scanned_count: usize,
+    },
     GroupCompleted(String),
     GroupError {
         group_name: String,
@@ -48,6 +54,8 @@ pub struct GroupScanStatus {
     pub completed: bool,
     pub error: Option<String>,
     pub miner_count: usize,
+    pub total_ips: usize,
+    pub scanned_ips: usize,
 }
 
 pub struct MainView {
@@ -150,6 +158,33 @@ impl MainView {
                             completed: false,
                             error: None,
                             miner_count: 1,
+                            total_ips: 0, // Will be set when first IpScanned message arrives
+                            scanned_ips: 0,
+                        },
+                    );
+                }
+                Task::none()
+            }
+            MainViewMessage::IpScanned {
+                group_name,
+                ip: _,
+                total_ips,
+                scanned_count,
+            } => {
+                // Update group status with progress information
+                if let Some(status) = self.group_status.get_mut(&group_name) {
+                    status.total_ips = total_ips;
+                    status.scanned_ips = scanned_count;
+                } else {
+                    // Create new status if it doesn't exist
+                    self.group_status.insert(
+                        group_name,
+                        GroupScanStatus {
+                            completed: false,
+                            error: None,
+                            miner_count: 0,
+                            total_ips,
+                            scanned_ips: scanned_count,
                         },
                     );
                 }
@@ -162,12 +197,20 @@ impl MainView {
                     .map(|miners| miners.len())
                     .unwrap_or(0);
 
+                // Get existing status to preserve progress information
+                let existing_status = self.group_status.get(&group_name);
+                let (total_ips, scanned_ips) = existing_status
+                    .map(|s| (s.total_ips, s.scanned_ips))
+                    .unwrap_or((0, 0));
+
                 self.group_status.insert(
                     group_name.clone(),
                     GroupScanStatus {
                         completed: true,
                         error: None,
                         miner_count,
+                        total_ips,
+                        scanned_ips,
                     },
                 );
                 self.completed_groups += 1;
@@ -187,6 +230,12 @@ impl MainView {
                 Task::none()
             }
             MainViewMessage::GroupError { group_name, error } => {
+                // Get existing status to preserve progress information
+                let existing_status = self.group_status.get(&group_name);
+                let (total_ips, scanned_ips) = existing_status
+                    .map(|s| (s.total_ips, s.scanned_ips))
+                    .unwrap_or((0, 0));
+
                 self.group_status.insert(
                     group_name.clone(),
                     GroupScanStatus {
@@ -197,6 +246,8 @@ impl MainView {
                             .get(&group_name)
                             .map(|miners| miners.len())
                             .unwrap_or(0),
+                        total_ips,
+                        scanned_ips,
                     },
                 );
                 self.error_messages
@@ -316,16 +367,50 @@ impl MainView {
             .sum();
 
         let progress = if self.is_scanning && self.total_groups > 0 {
-            let progress_value = self.completed_groups as f32 / self.total_groups as f32;
+            // Calculate overall IP progress across all groups
+            let (total_ips_all_groups, scanned_ips_all_groups) =
+                self.group_status
+                    .values()
+                    .fold((0, 0), |(total_acc, scanned_acc), status| {
+                        (
+                            total_acc + status.total_ips,
+                            scanned_acc + status.scanned_ips,
+                        )
+                    });
+
+            let progress_value = if total_ips_all_groups > 0 {
+                scanned_ips_all_groups as f32 / total_ips_all_groups as f32
+            } else {
+                self.completed_groups as f32 / self.total_groups as f32
+            };
+
+            let progress_text = if total_ips_all_groups > 0 {
+                format!(
+                    "Scanning {} IPs across {} groups",
+                    total_ips_all_groups, self.total_groups
+                )
+            } else {
+                format!("Scanning {} groups", self.total_groups)
+            };
+
+            let status_text = if total_ips_all_groups > 0 {
+                format!(
+                    "{}/{} IPs scanned",
+                    scanned_ips_all_groups, total_ips_all_groups
+                )
+            } else {
+                format!(
+                    "{}/{} groups completed",
+                    self.completed_groups, self.total_groups
+                )
+            };
+
             container(
                 column![
                     row![
-                        theme::typography::body(format!("Scanning {} groups", self.total_groups)),
+                        theme::typography::body(progress_text),
                         Space::new(Length::Fill, Length::Fixed(0.0)),
-                        theme::typography::body(format!(
-                            "{}/{} completed",
-                            self.completed_groups, self.total_groups
-                        ))
+                        theme::typography::body(status_text)
                     ],
                     progress_bar(0.0..=1.0, progress_value)
                 ]
@@ -479,7 +564,12 @@ impl MainView {
                         .padding([theme::padding::XS, theme::padding::SM])
                     }
                 } else {
-                    container(theme::typography::small("SCANNING"))
+                    let progress_text = if status.total_ips > 0 {
+                        format!("{}/{} IPs", status.scanned_ips, status.total_ips)
+                    } else {
+                        "SCANNING".to_string()
+                    };
+                    container(theme::typography::small(progress_text))
                         .style(theme::containers::warning)
                         .padding([theme::padding::XS, theme::padding::SM])
                 }
@@ -634,42 +724,38 @@ impl MainView {
             let miner_row = container(
                 row![
                     container(
-                        button(
-                            theme::typography::mono(miner_ip.to_string())
-                        )
-                        .style(button::text)
-                        .padding(0)
-                        .on_press(MainViewMessage::OpenIpInBrowser(miner_ip))
+                        button(theme::typography::mono(miner_ip.to_string()))
+                            .style(button::text)
+                            .padding(0)
+                            .on_press(MainViewMessage::OpenIpInBrowser(miner_ip))
                     )
                     .align_x(iced::alignment::Horizontal::Left)
                     .width(Length::FillPortion(3))
                     .padding(theme::padding::XS),
-                    container(
-                        theme::typography::body(
-                            format!("{}", miner.device_info.model).replace("Plus", "+")
-                        )
-                    )
+                    container(theme::typography::body(
+                        format!("{}", miner.device_info.model).replace("Plus", "+")
+                    ))
                     .align_x(iced::alignment::Horizontal::Left)
                     .width(Length::FillPortion(3))
                     .padding(theme::padding::XS),
-                    container(
-                        theme::typography::body(format!("{}", miner.device_info.make))
-                    )
+                    container(theme::typography::body(format!(
+                        "{}",
+                        miner.device_info.make
+                    )))
                     .align_x(iced::alignment::Horizontal::Left)
                     .width(Length::FillPortion(2))
                     .padding(theme::padding::XS),
-                    container(
-                        theme::typography::body(format!("{}", miner.device_info.firmware))
-                    )
+                    container(theme::typography::body(format!(
+                        "{}",
+                        miner.device_info.firmware
+                    )))
                     .align_x(iced::alignment::Horizontal::Left)
                     .width(Length::FillPortion(2))
                     .padding(theme::padding::XS),
-                    container(
-                        theme::typography::body(format!(
-                            "{}",
-                            miner.firmware_version.as_ref().unwrap_or(&"-".to_string())
-                        ))
-                    )
+                    container(theme::typography::body(format!(
+                        "{}",
+                        miner.firmware_version.as_ref().unwrap_or(&"-".to_string())
+                    )))
                     .align_x(iced::alignment::Horizontal::Left)
                     .width(Length::FillPortion(2))
                     .padding(theme::padding::XS),

@@ -159,6 +159,19 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
                         .main_view
                         .update(MainViewMessage::MinerFound { group_name, miner });
                 }
+                ScannerMessage::IpScanned {
+                    group_name,
+                    ip,
+                    total_ips,
+                    scanned_count,
+                } => {
+                    let _ = state.main_view.update(MainViewMessage::IpScanned {
+                        group_name,
+                        ip,
+                        total_ips,
+                        scanned_count,
+                    });
+                }
                 ScannerMessage::GroupScanCompleted { group_name, result } => match result {
                     Ok(()) => {
                         let _ = state
