@@ -1,5 +1,7 @@
 use std::sync::{Arc, atomic::AtomicUsize};
+use std::time::{Duration, Instant};
 
+use crate::errors::{ScannerError, ScannerResult};
 use asic_rs::{
     data::{
         device::{MinerFirmware, MinerMake},
@@ -8,21 +10,26 @@ use asic_rs::{
     miners::{backends::traits::GetMinerData, data::DataField},
 };
 use iced::{
-    futures::{SinkExt, StreamExt, future, lock::Mutex},
+    futures::{SinkExt, StreamExt, future},
     stream,
 };
 use tokio::runtime::Runtime;
 
-/// Scanner configuration with optional filters
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ScanConfig {
     pub search_makes: Option<Vec<MinerMake>>,
     pub search_firmwares: Option<Vec<MinerFirmware>>,
 }
 
-/// Calculate adaptive buffer size (50-1000 range)
+#[derive(Debug, Clone)]
+struct ThrottledProgress {
+    group_name: String,
+    total_ips: usize,
+    scanned_count: usize,
+}
+
 fn calculate_buffer_size(estimated_ips: usize) -> usize {
-    (50 + estimated_ips / 10).min(1000).max(50)
+    (50 + estimated_ips / 10).clamp(50, 1000)
 }
 
 async fn get_partial_data(miner: Box<dyn GetMinerData>) -> MinerData {
@@ -42,7 +49,6 @@ pub enum ScannerMessage {
     },
     IpScanned {
         group_name: String,
-        ip: std::net::IpAddr,
         total_ips: usize,
         scanned_count: usize,
     },
@@ -53,7 +59,6 @@ pub enum ScannerMessage {
     AllScansCompleted,
 }
 
-/// Network scan group with range and filters
 #[derive(Debug, Clone)]
 pub struct ScanGroup {
     pub name: String,
@@ -78,7 +83,6 @@ impl ScanGroup {
 pub struct Scanner;
 
 impl Scanner {
-    /// Scan multiple groups in parallel
     pub fn scan_multiple_groups(groups: Vec<ScanGroup>) -> iced::Subscription<ScannerMessage> {
         iced::Subscription::run_with_id(
             "multi_group_scanner",
@@ -86,11 +90,9 @@ impl Scanner {
         )
     }
 
-    /// Create parallel scanning stream with adaptive buffering
     fn scan_multiple_groups_stream(
         groups: Vec<ScanGroup>,
     ) -> impl iced::futures::Stream<Item = ScannerMessage> {
-        // Size buffer based on total IP count
         let total_estimated_ips: usize = groups
             .iter()
             .map(|group| super::estimate_ip_count(&group.network_range))
@@ -109,7 +111,6 @@ impl Scanner {
                 return;
             }
 
-            // Spawn parallel scan tasks
             let scan_futures = groups.into_iter().map(|group| {
                 let mut output_clone = output.clone();
                 let group_name = group.name.clone();
@@ -121,58 +122,54 @@ impl Scanner {
                         &mut output_clone,
                         &group.name,
                     )
-                    .await;
+                    .await
+                    .map_err(|e| e.to_string());
 
-                    // Report group completion
                     let _ = output_clone
                         .send(ScannerMessage::GroupScanCompleted { group_name, result })
                         .await;
                 }
             });
 
-            // Execute parallel scans
             join_all(scan_futures).await;
 
-            // Signal all scans complete
             let _ = output.send(ScannerMessage::AllScansCompleted).await;
 
-            // Keep stream alive for subscription lifecycle
             std::future::pending::<()>().await;
         })
     }
 
-    /// Real-time scan with dedicated runtime bridge
     async fn perform_realtime_scan(
         network_range: &str,
         config: &ScanConfig,
         output: &mut iced::futures::channel::mpsc::Sender<ScannerMessage>,
         group_name: &str,
-    ) -> Result<(), String> {
-        // Channel for async miner streaming
+    ) -> ScannerResult<()> {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<MinerData>();
 
-        // Channel for progress updates
         let (progress_tx, mut progress_rx) =
-            tokio::sync::mpsc::unbounded_channel::<ScannerMessage>();
-
-        // Dedicated runtime for Tokio operations (Iced runs outside Tokio context)
-        let rt = Runtime::new().map_err(|e| format!("Failed to create Tokio runtime: {e}"))?;
+            tokio::sync::mpsc::unbounded_channel::<ThrottledProgress>();
 
         let network_range = network_range.to_owned();
         let config = config.clone();
         let group_name_clone = group_name.to_owned();
 
-        // Thread bridge to Tokio runtime
+        // Create dedicated Tokio runtime for CPU-intensive scanning
+        let rt = Runtime::new().map_err(|e| {
+            ScannerError::NetworkRangeInvalid(format!("Failed to create runtime: {e}"))
+        })?;
+
         let scan_handle = std::thread::spawn(move || {
             rt.block_on(async move {
                 Self::scan_network(&network_range, &config, tx, progress_tx, group_name_clone).await
             })
         });
 
-        // Forward progress updates and discovered miners to output stream
+        let mut last_progress_time = Instant::now();
+        const PROGRESS_THROTTLE_MS: u64 = 100; // Throttle to every 100ms
+
         loop {
             tokio::select! {
-                // Forward discovered miners
                 miner_opt = rx.recv() => {
                     match miner_opt {
                         Some(miner) => {
@@ -184,27 +181,32 @@ impl Scanner {
                                 .await
                                 .is_err()
                             {
-                                // Output closed, stop forwarding
-                                break;
+                                return Err(ScannerError::ChannelClosed);
                             }
                         }
-                        None => {
-                            // Miner channel closed, continue with progress updates
-                        }
+                        None => {}
                     }
                 }
 
-                // Forward progress updates
                 progress_opt = progress_rx.recv() => {
                     match progress_opt {
-                        Some(progress_msg) => {
-                            if output.send(progress_msg).await.is_err() {
-                                // Output closed, stop forwarding
-                                break;
+                        Some(throttled_progress) => {
+                            let now = Instant::now();
+                            // Throttle progress updates to avoid UI flooding
+                            if now.duration_since(last_progress_time) >= Duration::from_millis(PROGRESS_THROTTLE_MS) {
+                                let progress_msg = ScannerMessage::IpScanned {
+                                    group_name: throttled_progress.group_name,
+                                    total_ips: throttled_progress.total_ips,
+                                    scanned_count: throttled_progress.scanned_count,
+                                };
+
+                                if output.send(progress_msg).await.is_err() {
+                                    return Err(ScannerError::ChannelClosed);
+                                }
+                                last_progress_time = now;
                             }
                         }
                         None => {
-                            // Progress channel closed, scan might be done
                             break;
                         }
                     }
@@ -212,63 +214,48 @@ impl Scanner {
             }
         }
 
-        // Wait for scan completion
-        scan_handle
-            .join()
-            .map_err(|_| "Scanning thread panicked".to_string())?
+        drop(scan_handle);
+
+        Ok(())
     }
 
-    /// Network scan with miner discovery streaming
     async fn scan_network(
         network_range: &str,
         config: &ScanConfig,
         tx: tokio::sync::mpsc::UnboundedSender<MinerData>,
-        progress_tx: tokio::sync::mpsc::UnboundedSender<ScannerMessage>,
+        progress_tx: tokio::sync::mpsc::UnboundedSender<ThrottledProgress>,
         group_name: String,
     ) -> Result<(), String> {
-        // Create configured factory
         let factory = super::create_configured_miner_factory(network_range, config)?;
         let total_ips = factory.hosts().len();
 
-        // Stream concurrent IP scans
         let stream = factory
             .scan_stream_with_ip()
             .map_err(|e| format!("Failed to create scan stream: {e}"))?;
 
-        let tx_arc = Arc::new(Mutex::new(tx));
-        let progress_tx_arc = Arc::new(Mutex::new(progress_tx));
         let scanned_count = Arc::new(AtomicUsize::new(0));
 
+        // Scan all IPs concurrently with no limit
         stream
-            .for_each_concurrent(None, move |(ip, miner)| {
-                let tx_arc = tx_arc.clone();
-                let progress_tx_arc = progress_tx_arc.clone();
+            .for_each_concurrent(None, move |(_ip, miner)| {
+                let tx = tx.clone(); // Much cheaper than Arc<Mutex>
+                let progress_tx = progress_tx.clone();
                 let scanned_count = scanned_count.clone();
                 let group_name = group_name.clone();
 
                 async move {
-                    // Increment scanned count
                     let current_count =
                         scanned_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
 
-                    // Send progress update
-                    let _ = progress_tx_arc
-                        .lock()
-                        .await
-                        .send(ScannerMessage::IpScanned {
-                            group_name: group_name.clone(),
-                            ip,
-                            total_ips,
-                            scanned_count: current_count,
-                        });
+                    let _ = progress_tx.send(ThrottledProgress {
+                        group_name: group_name.clone(),
+                        total_ips,
+                        scanned_count: current_count,
+                    });
 
-                    // Send miner data if found
-                    match miner {
-                        Some(miner) => {
-                            let miner_data = get_partial_data(miner).await;
-                            let _ = tx_arc.lock().await.send(miner_data);
-                        }
-                        None => {}
+                    if let Some(miner) = miner {
+                        let miner_data = get_partial_data(miner).await;
+                        let _ = tx.send(miner_data);
                     }
                 }
             })

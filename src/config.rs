@@ -1,3 +1,4 @@
+use crate::errors::{ConfigError, ConfigResult};
 use crate::network::scanner::ScanConfig;
 use asic_rs::data::miner::MinerData;
 use serde::{Deserialize, Serialize};
@@ -24,10 +25,6 @@ impl ScanGroup {
         }
     }
 
-    pub fn with_scan_config(mut self, config: ScanConfig) -> Self {
-        self.scan_config = config;
-        self
-    }
 }
 
 /// Main application configuration
@@ -52,26 +49,27 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
-    /// Load configuration from btc_toolkit_config.json
-    pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
-        let content = fs::read_to_string(path)?;
-        let config: AppConfig = serde_json::from_str(&content)?;
+    pub fn load_from_file<P: AsRef<Path>>(path: P) -> ConfigResult<Self> {
+        let path_ref = path.as_ref();
+        let content = fs::read_to_string(path_ref)
+            .map_err(|_| ConfigError::FileNotFound(path_ref.display().to_string()))?;
+        let config: AppConfig = serde_json::from_str(&content)
+            .map_err(|e| ConfigError::Serialization(e.to_string()))?;
         Ok(config)
     }
 
-    /// Save configuration to btc_toolkit_config.json
-    pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn std::error::Error>> {
-        let content = serde_json::to_string_pretty(self)?;
-        fs::write(path, content)?;
+    pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> ConfigResult<()> {
+        let content = serde_json::to_string_pretty(self)
+            .map_err(|e| ConfigError::Serialization(e.to_string()))?;
+        fs::write(path, content).map_err(|e| ConfigError::Serialization(e.to_string()))?;
         Ok(())
     }
 
-    /// Load configuration from default location (btc_toolkit_config.json in current directory)
     pub fn load() -> Self {
+        // Load config or create default if file missing/invalid
         Self::load_from_file("btc_toolkit_config.json").unwrap_or_else(|e| {
             eprintln!("Warning: Failed to load config file: {e}");
 
-            // If loading fails, create default config and save it
             let config = Self::default();
             if let Err(e) = config.save_to_file("btc_toolkit_config.json") {
                 eprintln!("Warning: Failed to save default config: {e}");
@@ -80,24 +78,20 @@ impl AppConfig {
         })
     }
 
-    /// Save configuration to default location
-    pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn save(&self) -> ConfigResult<()> {
         self.save_to_file("btc_toolkit_config.json")
     }
 
-    /// Add a new scan group
     pub fn add_scan_group(&mut self, group: ScanGroup) {
         self.scan_groups.push(group);
     }
 
-    /// Remove a scan group by name
     pub fn remove_scan_group(&mut self, name: &str) -> bool {
         let initial_len = self.scan_groups.len();
         self.scan_groups.retain(|group| group.name != name);
         self.scan_groups.len() != initial_len
     }
 
-    /// Update an existing scan group
     pub fn update_scan_group(&mut self, name: &str, updated_group: ScanGroup) -> bool {
         if let Some(group) = self.scan_groups.iter_mut().find(|g| g.name == name) {
             *group = updated_group;
@@ -107,38 +101,28 @@ impl AppConfig {
         }
     }
 
-    /// Get enabled scan groups
     pub fn get_enabled_groups(&self) -> Vec<&ScanGroup> {
         self.scan_groups.iter().filter(|g| g.enabled).collect()
     }
 
-    /// Get scan group by name
     pub fn get_group(&self, name: &str) -> Option<&ScanGroup> {
         self.scan_groups.iter().find(|g| g.name == name)
     }
 
-    /// Get mutable scan group by name
     pub fn get_group_mut(&mut self, name: &str) -> Option<&mut ScanGroup> {
         self.scan_groups.iter_mut().find(|g| g.name == name)
     }
 
-    /// Store scan results for a group
     pub fn store_scan_results(&mut self, group_name: &str, miners: Vec<MinerData>) {
         self.last_scan_results
             .insert(group_name.to_string(), miners);
     }
 
-    /// Get scan results for a group
-    pub fn get_scan_results(&self, group_name: &str) -> Option<&Vec<MinerData>> {
-        self.last_scan_results.get(group_name)
-    }
 
-    /// Get all scan results
     pub fn get_all_scan_results(&self) -> &HashMap<String, Vec<MinerData>> {
         &self.last_scan_results
     }
 
-    /// Clear all scan results
     pub fn clear_scan_results(&mut self) {
         self.last_scan_results.clear();
     }

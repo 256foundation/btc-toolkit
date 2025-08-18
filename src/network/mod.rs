@@ -3,7 +3,6 @@ pub mod scanner;
 use asic_rs::miners::factory::MinerFactory;
 use scanner::ScanConfig;
 
-/// Create a MinerFactory from a network range string
 pub fn create_miner_factory(network_range: &str) -> Result<MinerFactory, String> {
     if network_range.contains('/') {
         MinerFactory::new()
@@ -21,14 +20,12 @@ pub fn create_miner_factory(network_range: &str) -> Result<MinerFactory, String>
     }
 }
 
-/// Create a configured MinerFactory with filters applied
 pub fn create_configured_miner_factory(
     network_range: &str,
     config: &ScanConfig,
 ) -> Result<MinerFactory, String> {
     let mut factory = create_miner_factory(network_range)?;
 
-    // Apply search filters if configured
     if let Some(ref makes) = config.search_makes {
         factory = factory.with_search_makes(makes.clone());
     }
@@ -40,7 +37,6 @@ pub fn create_configured_miner_factory(
     Ok(factory)
 }
 
-/// Estimate the number of IPs in a network range
 pub fn estimate_ip_count(network_range: &str) -> usize {
     match create_miner_factory(network_range) {
         Ok(factory) => factory.hosts().len(),

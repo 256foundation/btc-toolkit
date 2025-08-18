@@ -1,8 +1,12 @@
 use crate::config::AppConfig;
 use crate::network::estimate_ip_count;
+use crate::sorting::{SortColumn, SortDirection, sort_miners_by_column};
 use crate::theme;
+use crate::ui_helpers::{
+    calculate_progress, danger_button, format_duration, primary_button, secondary_button,
+};
 use asic_rs::data::miner::MinerData;
-use iced::widget::{Space, button, column, container, progress_bar, row, scrollable, text};
+use iced::widget::{Space, button, column, container, progress_bar, row, scrollable};
 use iced::{Element, Length, Task};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
@@ -21,7 +25,6 @@ pub enum MainViewMessage {
     },
     IpScanned {
         group_name: String,
-        ip: std::net::IpAddr,
         total_ips: usize,
         scanned_count: usize,
     },
@@ -32,21 +35,6 @@ pub enum MainViewMessage {
     },
     AllScansCompleted,
     SortColumn(SortColumn),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SortColumn {
-    IpAddress,
-    Model,
-    Make,
-    Firmware,
-    FirmwareVersion,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SortDirection {
-    Ascending,
-    Descending,
 }
 
 #[derive(Debug, Clone)]
@@ -106,7 +94,6 @@ impl MainView {
         self.discovered_miners_by_group.clear();
         self.group_status.clear();
         self.error_messages.clear();
-        // Clear previous scan results from config
         self.app_config.clear_scan_results();
 
         let enabled_groups = self.app_config.get_enabled_groups();
@@ -132,10 +119,7 @@ impl MainView {
                 self.is_scanning = false;
                 Task::none()
             }
-            MainViewMessage::AddGroup => {
-                // This will navigate to the network config page
-                Task::none()
-            }
+            MainViewMessage::AddGroup => Task::none(),
             MainViewMessage::OpenIpInBrowser(ip) => {
                 let url = format!("http://{}", ip);
                 if let Err(e) = opener::open(&url) {
@@ -167,16 +151,13 @@ impl MainView {
             }
             MainViewMessage::IpScanned {
                 group_name,
-                ip: _,
                 total_ips,
                 scanned_count,
             } => {
-                // Update group status with progress information
                 if let Some(status) = self.group_status.get_mut(&group_name) {
                     status.total_ips = total_ips;
                     status.scanned_ips = scanned_count;
                 } else {
-                    // Create new status if it doesn't exist
                     self.group_status.insert(
                         group_name,
                         GroupScanStatus {
@@ -197,7 +178,6 @@ impl MainView {
                     .map(|miners| miners.len())
                     .unwrap_or(0);
 
-                // Get existing status to preserve progress information
                 let existing_status = self.group_status.get(&group_name);
                 let (total_ips, scanned_ips) = existing_status
                     .map(|s| (s.total_ips, s.scanned_ips))
@@ -230,7 +210,6 @@ impl MainView {
                 Task::none()
             }
             MainViewMessage::GroupError { group_name, error } => {
-                // Get existing status to preserve progress information
                 let existing_status = self.group_status.get(&group_name);
                 let (total_ips, scanned_ips) = existing_status
                     .map(|s| (s.total_ips, s.scanned_ips))
@@ -294,49 +273,24 @@ impl MainView {
         let subtitle = theme::typography::small("Bitcoin ASIC Miner Control Center");
 
         let scan_button = if self.is_scanning {
-            button(
-                row![text("⬛"), theme::typography::body("Stop Scan")]
-                    .spacing(theme::spacing::XS)
-                    .align_y(iced::alignment::Vertical::Center),
-            )
-            .style(button::danger)
-            .padding(theme::padding::SM)
-            .on_press(MainViewMessage::StopScan)
+            danger_button("Stop Scan", Some("⬛"), Some(MainViewMessage::StopScan))
         } else {
             let enabled_groups = self.app_config.get_enabled_groups();
             if enabled_groups.is_empty() {
-                button(theme::typography::body("No Groups Enabled"))
-                    .style(button::secondary)
-                    .padding(theme::padding::SM)
+                secondary_button("No Groups Enabled", None, None)
             } else {
-                button(
-                    row![text("▶"), theme::typography::body("Start Scan")]
-                        .spacing(theme::spacing::XS)
-                        .align_y(iced::alignment::Vertical::Center),
-                )
-                .style(button::primary)
-                .padding(theme::padding::SM)
-                .on_press(MainViewMessage::StartScan)
+                primary_button("Start Scan", Some("▶"), Some(MainViewMessage::StartScan))
             }
         };
 
-        let add_group_button = button(
-            row![text("➕"), theme::typography::body("Add Group")]
-                .spacing(theme::spacing::XS)
-                .align_y(iced::alignment::Vertical::Center),
-        )
-        .style(button::secondary)
-        .padding(theme::padding::SM)
-        .on_press(MainViewMessage::AddGroup);
+        let add_group_button =
+            secondary_button("Add Group", Some("➕"), Some(MainViewMessage::AddGroup));
 
-        let config_button = button(
-            row![text("⚙"), theme::typography::body("Configure")]
-                .spacing(theme::spacing::XS)
-                .align_y(iced::alignment::Vertical::Center),
-        )
-        .style(button::secondary)
-        .padding(theme::padding::SM)
-        .on_press(MainViewMessage::OpenNetworkConfig);
+        let config_button = secondary_button(
+            "Configure",
+            Some("⚙"),
+            Some(MainViewMessage::OpenNetworkConfig),
+        );
 
         container(
             row![
@@ -357,7 +311,7 @@ impl MainView {
         let all_results = if self.is_scanning {
             &self.discovered_miners_by_group
         } else {
-            &self.app_config.get_all_scan_results()
+            self.app_config.get_all_scan_results()
         };
 
         let total_miners: usize = all_results.values().map(|miners| miners.len()).sum();
@@ -367,7 +321,7 @@ impl MainView {
             .sum();
 
         let progress = if self.is_scanning && self.total_groups > 0 {
-            // Calculate overall IP progress across all groups
+            // Aggregate progress across all groups
             let (total_ips_all_groups, scanned_ips_all_groups) =
                 self.group_status
                     .values()
@@ -379,9 +333,9 @@ impl MainView {
                     });
 
             let progress_value = if total_ips_all_groups > 0 {
-                scanned_ips_all_groups as f32 / total_ips_all_groups as f32
+                calculate_progress(scanned_ips_all_groups, total_ips_all_groups)
             } else {
-                self.completed_groups as f32 / self.total_groups as f32
+                calculate_progress(self.completed_groups, self.total_groups)
             };
 
             let progress_text = if total_ips_all_groups > 0 {
@@ -476,9 +430,8 @@ impl MainView {
                         }),
                         theme::typography::small("Status"),
                         theme::typography::tiny(if self.is_scanning {
-                            format!(
-                                "{}s",
-                                self.start_time.map(|t| t.elapsed().as_secs()).unwrap_or(0)
+                            format_duration(
+                                self.start_time.map(|t| t.elapsed().as_secs()).unwrap_or(0),
                             )
                         } else {
                             "idle".to_string()
@@ -590,7 +543,9 @@ impl MainView {
                         Space::new(Length::Fill, Length::Fixed(0.0)),
                         status_badge
                     ]
-                    .align_y(iced::alignment::Vertical::Center),
+                    .align_y(iced::alignment::Vertical::Center)
+                    .spacing(theme::spacing::SM)
+                    .height(Length::Fixed(28.0)),
                     theme::typography::mono(&group.network_range),
                     theme::typography::tiny(format!("~{} IPs", estimated_ips))
                 ]
@@ -616,7 +571,7 @@ impl MainView {
         let all_results = if self.is_scanning {
             &self.discovered_miners_by_group
         } else {
-            &self.app_config.get_all_scan_results()
+            self.app_config.get_all_scan_results()
         };
 
         if all_results.is_empty() {
@@ -704,10 +659,7 @@ impl MainView {
         .padding(theme::padding::SM)
         .width(Length::Fill);
 
-        let mut all_miners = Vec::new();
-        for miners in all_results.values() {
-            all_miners.extend(miners.clone());
-        }
+        let mut all_miners: Vec<MinerData> = all_results.values().flatten().cloned().collect();
 
         self.sort_miners(&mut all_miners);
 
@@ -775,50 +727,9 @@ impl MainView {
             .into()
     }
 
-    fn sort_miners(&self, miners: &mut Vec<MinerData>) {
-        match self.sort_column {
-            Some(SortColumn::IpAddress) => {
-                miners.sort_by_key(|m| m.ip);
-                if self.sort_direction == SortDirection::Descending {
-                    miners.reverse();
-                }
-            }
-            Some(SortColumn::Model) => {
-                miners.sort_by(|a, b| {
-                    format!("{}", a.device_info.model).cmp(&format!("{}", b.device_info.model))
-                });
-                if self.sort_direction == SortDirection::Descending {
-                    miners.reverse();
-                }
-            }
-            Some(SortColumn::Make) => {
-                miners.sort_by(|a, b| {
-                    format!("{}", a.device_info.make).cmp(&format!("{}", b.device_info.make))
-                });
-                if self.sort_direction == SortDirection::Descending {
-                    miners.reverse();
-                }
-            }
-            Some(SortColumn::Firmware) => {
-                miners.sort_by(|a, b| {
-                    format!("{}", a.device_info.firmware)
-                        .cmp(&format!("{}", b.device_info.firmware))
-                });
-                if self.sort_direction == SortDirection::Descending {
-                    miners.reverse();
-                }
-            }
-            Some(SortColumn::FirmwareVersion) => {
-                miners.sort_by(|a, b| {
-                    let a_version = a.firmware_version.as_deref().unwrap_or("");
-                    let b_version = b.firmware_version.as_deref().unwrap_or("");
-                    a_version.cmp(b_version)
-                });
-                if self.sort_direction == SortDirection::Descending {
-                    miners.reverse();
-                }
-            }
-            None => {}
+    fn sort_miners(&self, miners: &mut [MinerData]) {
+        if let Some(column) = self.sort_column {
+            sort_miners_by_column(miners, column, self.sort_direction);
         }
     }
 }

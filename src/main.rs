@@ -1,8 +1,11 @@
 mod config;
+mod errors;
 mod main_view;
 mod network;
 mod network_config;
+mod sorting;
 mod theme;
+mod ui_helpers;
 
 use crate::config::AppConfig;
 use crate::main_view::{MainView, MainViewMessage};
@@ -18,24 +21,18 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() -> iced::Result {
-    // Create application with title, update function, and view function
     iced::application("BTC Toolkit", update, view)
-        // Add subscription for streaming scanner events
         .subscription(subscription)
-        // Configure window with custom settings optimized for ASIC farm management
         .window(window::Settings {
-            size: Size::new(1200.0, 800.0), // Larger default size for better data visibility
+            size: Size::new(1200.0, 800.0),
             position: window::Position::Centered,
-            min_size: Some(Size::new(1000.0, 650.0)), // Ensure minimum usability
+            min_size: Some(Size::new(1000.0, 650.0)),
             ..window::Settings::default()
         })
-        // Apply Bitcoin-inspired theme
         .theme(|_| theme::THEME)
-        // Run with initial state
         .run_with(|| (BtcToolkit::new(), Task::none()))
 }
 
-// Enum to track which page is currently active
 #[derive(Debug, Clone)]
 enum Page {
     Main,
@@ -79,57 +76,52 @@ impl BtcToolkit {
 enum BtcToolkitMessage {
     MainView(MainViewMessage),
     NetworkConfig(NetworkConfigMessage),
-    Scanner(ScannerMessage), // Messages from the scanner
+    Scanner(ScannerMessage),
 }
 
-// Update function for the application
 fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkitMessage> {
     match message {
-        BtcToolkitMessage::MainView(message) => {
-            match message.clone() {
-                MainViewMessage::OpenNetworkConfig | MainViewMessage::AddGroup => {
-                    state.current_page = Page::NetworkConfig;
-                    Task::none()
-                }
-
-                MainViewMessage::StartScan => {
-                    // Get enabled groups for scanning
-                    let enabled_groups = state.app_config.get_enabled_groups();
-
-                    // Set active scan for subscription - collect all enabled groups
-                    let active_scans: Vec<network::scanner::ScanGroup> = enabled_groups
-                        .into_iter()
-                        .map(|group| {
-                            network::scanner::ScanGroup::new(
-                                group.name.clone(),
-                                group.network_range.clone(),
-                                group.scan_config.clone(),
-                            )
-                        })
-                        .collect();
-
-                    state.active_scan = if active_scans.is_empty() {
-                        None
-                    } else {
-                        Some(active_scans)
-                    };
-
-                    let task = state.main_view.update(message);
-                    task.map(BtcToolkitMessage::MainView)
-                }
-
-                MainViewMessage::StopScan => {
-                    state.active_scan = None;
-                    let task = state.main_view.update(message);
-                    task.map(BtcToolkitMessage::MainView)
-                }
-
-                _ => {
-                    let task = state.main_view.update(message);
-                    task.map(BtcToolkitMessage::MainView)
-                }
+        BtcToolkitMessage::MainView(message) => match message.clone() {
+            MainViewMessage::OpenNetworkConfig | MainViewMessage::AddGroup => {
+                state.current_page = Page::NetworkConfig;
+                Task::none()
             }
-        }
+
+            MainViewMessage::StartScan => {
+                let enabled_groups = state.app_config.get_enabled_groups();
+
+                let active_scans: Vec<network::scanner::ScanGroup> = enabled_groups
+                    .into_iter()
+                    .map(|group| {
+                        network::scanner::ScanGroup::new(
+                            group.name.clone(),
+                            group.network_range.clone(),
+                            group.scan_config.clone(),
+                        )
+                    })
+                    .collect();
+
+                state.active_scan = if active_scans.is_empty() {
+                    None
+                } else {
+                    Some(active_scans)
+                };
+
+                let task = state.main_view.update(message);
+                task.map(BtcToolkitMessage::MainView)
+            }
+
+            MainViewMessage::StopScan => {
+                state.active_scan = None;
+                let task = state.main_view.update(message);
+                task.map(BtcToolkitMessage::MainView)
+            }
+
+            _ => {
+                let task = state.main_view.update(message);
+                task.map(BtcToolkitMessage::MainView)
+            }
+        },
 
         BtcToolkitMessage::NetworkConfig(message) => {
             state.network_config.update(message.clone());
@@ -140,7 +132,6 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
                     Task::none()
                 }
                 NetworkConfigMessage::Save => {
-                    // Update app config from network config
                     state.app_config = state.network_config.get_app_config().clone();
                     state.main_view.set_app_config(state.app_config.clone());
                     state.save_config();
@@ -152,7 +143,6 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
         }
 
         BtcToolkitMessage::Scanner(scanner_msg) => {
-            // Forward scanner messages to unified view
             match scanner_msg {
                 ScannerMessage::MinerDiscovered { group_name, miner } => {
                     let _ = state
@@ -161,13 +151,11 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
                 }
                 ScannerMessage::IpScanned {
                     group_name,
-                    ip,
                     total_ips,
                     scanned_count,
                 } => {
                     let _ = state.main_view.update(MainViewMessage::IpScanned {
                         group_name,
-                        ip,
                         total_ips,
                         scanned_count,
                     });
@@ -186,7 +174,6 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
                 },
                 ScannerMessage::AllScansCompleted => {
                     let _ = state.main_view.update(MainViewMessage::AllScansCompleted);
-                    // Update config after all scans complete
                     state.app_config = state.main_view.get_app_config().clone();
                     state.save_config();
                 }
@@ -196,7 +183,6 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
     }
 }
 
-// Subscription function for handling ongoing scanner streams
 fn subscription(state: &BtcToolkit) -> Subscription<BtcToolkitMessage> {
     if let Some(ref active_scans) = state.active_scan {
         Scanner::scan_multiple_groups(active_scans.clone()).map(BtcToolkitMessage::Scanner)
@@ -205,7 +191,6 @@ fn subscription(state: &BtcToolkit) -> Subscription<BtcToolkitMessage> {
     }
 }
 
-// View function for the application
 fn view(state: &BtcToolkit) -> Element<'_, BtcToolkitMessage> {
     match state.current_page {
         Page::Main => state.main_view.view().map(BtcToolkitMessage::MainView),
