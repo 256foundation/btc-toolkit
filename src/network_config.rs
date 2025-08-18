@@ -235,10 +235,9 @@ impl NetworkConfig {
             let mut groups_list = column![].spacing(theme::spacing::MD);
 
             for group in &self.app_config.scan_groups {
-                let enabled_checkbox = checkbox("", group.enabled)
-                    .on_toggle(move |enabled| {
-                        NetworkConfigMessage::ToggleGroupEnabled(group.name.clone(), enabled)
-                    });
+                let enabled_checkbox = checkbox("", group.enabled).on_toggle(move |enabled| {
+                    NetworkConfigMessage::ToggleGroupEnabled(group.name.clone(), enabled)
+                });
 
                 let filters_summary = self.format_filters_summary(&group.scan_config);
 

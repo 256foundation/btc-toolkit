@@ -1,6 +1,5 @@
 use std::fmt;
 
-
 #[derive(Debug, Clone)]
 pub enum ConfigError {
     FileNotFound(String),
@@ -22,6 +21,7 @@ impl std::error::Error for ConfigError {}
 pub enum ScannerError {
     NetworkRangeInvalid(String),
     ChannelClosed,
+    ThreadError(String),
 }
 
 impl fmt::Display for ScannerError {
@@ -31,12 +31,12 @@ impl fmt::Display for ScannerError {
                 write!(f, "Invalid network range: {}", range)
             }
             ScannerError::ChannelClosed => write!(f, "Communication channel closed"),
+            ScannerError::ThreadError(msg) => write!(f, "Thread execution error: {}", msg),
         }
     }
 }
 
 impl std::error::Error for ScannerError {}
-
 
 pub type ConfigResult<T> = Result<T, ConfigError>;
 pub type ScannerResult<T> = Result<T, ScannerError>;

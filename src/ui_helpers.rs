@@ -66,5 +66,3 @@ pub fn format_duration(seconds: u64) -> String {
         _ => format!("{}h {}m", seconds / 3600, (seconds % 3600) / 60),
     }
 }
-
-

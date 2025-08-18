@@ -24,7 +24,6 @@ impl ScanGroup {
             enabled: true,
         }
     }
-
 }
 
 /// Main application configuration
@@ -117,7 +116,6 @@ impl AppConfig {
         self.last_scan_results
             .insert(group_name.to_string(), miners);
     }
-
 
     pub fn get_all_scan_results(&self) -> &HashMap<String, Vec<MinerData>> {
         &self.last_scan_results

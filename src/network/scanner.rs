@@ -155,9 +155,8 @@ impl Scanner {
         let group_name_clone = group_name.to_owned();
 
         // Create dedicated Tokio runtime for CPU-intensive scanning
-        let rt = Runtime::new().map_err(|e| {
-            ScannerError::NetworkRangeInvalid(format!("Failed to create runtime: {e}"))
-        })?;
+        let rt = Runtime::new()
+            .map_err(|e| ScannerError::ThreadError(format!("Failed to create runtime: {e}")))?;
 
         let scan_handle = std::thread::spawn(move || {
             rt.block_on(async move {
@@ -214,7 +213,15 @@ impl Scanner {
             }
         }
 
-        drop(scan_handle);
+        // Wait for the background thread to complete
+        match scan_handle.join() {
+            Ok(result) => result.map_err(ScannerError::ThreadError)?,
+            Err(_) => {
+                return Err(ScannerError::ThreadError(
+                    "Background thread panicked".to_string(),
+                ));
+            }
+        }
 
         Ok(())
     }
