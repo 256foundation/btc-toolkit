@@ -153,7 +153,7 @@ dependencies = [
 [[package]]
 name = "asic-rs"
 version = "0.1.1"
-source = "git+https://github.com/256-Foundation/asic-rs?branch=master#4897b31b27171d16217b5776f9af07e0f0d1a176"
+source = "git+https://github.com/256-Foundation/asic-rs?branch=master#04e604c971f4537e3899d303c444fdb5d673d243"
 dependencies = [
  "anyhow",
  "async-trait",
