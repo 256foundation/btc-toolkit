@@ -33,7 +33,7 @@ async fn main() -> iced::Result {
             min_size: Some(Size::new(1000.0, 650.0)),
             ..window::Settings::default()
         })
-        .theme(|_| theme::THEME)
+        .theme(|_| theme::theme())
         .run_with(|| (BtcToolkit::new(), Task::none()))
 }
 

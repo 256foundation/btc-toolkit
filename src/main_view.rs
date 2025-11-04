@@ -275,22 +275,22 @@ impl MainView {
         let subtitle = theme::typography::small("Bitcoin ASIC Miner Control Center");
 
         let scan_button = if self.is_scanning {
-            danger_button("Stop Scan", Some("⬛"), Some(MainViewMessage::StopScan))
+            danger_button("Stop Scan", Some(theme::icons::stop().into()), Some(MainViewMessage::StopScan))
         } else {
             let enabled_groups = self.app_config.get_enabled_groups();
             if enabled_groups.is_empty() {
                 secondary_button("No Groups Enabled", None, None)
             } else {
-                primary_button("Start Scan", Some("▶"), Some(MainViewMessage::StartScan))
+                primary_button("Start Scan", Some(theme::icons::play().into()), Some(MainViewMessage::StartScan))
             }
         };
 
         let add_group_button =
-            secondary_button("Add Group", Some("➕"), Some(MainViewMessage::AddGroup));
+            secondary_button("Add Group", Some(theme::icons::add().into()), Some(MainViewMessage::AddGroup));
 
         let config_button = secondary_button(
             "Configure",
-            Some("⚙"),
+            Some(theme::icons::settings().into()),
             Some(MainViewMessage::OpenNetworkConfig),
         );
 

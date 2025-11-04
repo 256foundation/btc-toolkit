@@ -4,14 +4,14 @@ use iced::{Element, alignment};
 
 pub fn create_button<'a, Message: Clone + 'a>(
     label: &'a str,
-    icon: Option<&'a str>,
+    icon: Option<Element<'a, Message>>,
     style: fn(&iced::Theme, iced::widget::button::Status) -> iced::widget::button::Style,
     message: Option<Message>,
 ) -> button::Button<'a, Message> {
     let content = if let Some(icon) = icon {
         Element::from(
-            row![text(icon), text(label)]
-                .spacing(theme::spacing::XS)
+            row![icon, text(label)]
+                .spacing(theme::spacing::SM)
                 .align_y(alignment::Vertical::Center),
         )
     } else {
@@ -29,7 +29,7 @@ pub fn create_button<'a, Message: Clone + 'a>(
 
 pub fn primary_button<'a, Message: Clone + 'a>(
     label: &'a str,
-    icon: Option<&'a str>,
+    icon: Option<Element<'a, Message>>,
     message: Option<Message>,
 ) -> button::Button<'a, Message> {
     create_button(label, icon, iced::widget::button::primary, message)
@@ -37,7 +37,7 @@ pub fn primary_button<'a, Message: Clone + 'a>(
 
 pub fn secondary_button<'a, Message: Clone + 'a>(
     label: &'a str,
-    icon: Option<&'a str>,
+    icon: Option<Element<'a, Message>>,
     message: Option<Message>,
 ) -> button::Button<'a, Message> {
     create_button(label, icon, iced::widget::button::secondary, message)
@@ -45,7 +45,7 @@ pub fn secondary_button<'a, Message: Clone + 'a>(
 
 pub fn danger_button<'a, Message: Clone + 'a>(
     label: &'a str,
-    icon: Option<&'a str>,
+    icon: Option<Element<'a, Message>>,
     message: Option<Message>,
 ) -> button::Button<'a, Message> {
     create_button(label, icon, iced::widget::button::danger, message)

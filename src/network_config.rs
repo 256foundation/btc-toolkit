@@ -189,9 +189,12 @@ impl NetworkConfig {
                 .spacing(theme::spacing::XS),
                 Space::new(Length::Fill, Length::Fixed(0.0)),
                 button(
-                    row![text("+").size(16), theme::typography::body("Add New Group")]
-                        .spacing(theme::spacing::SM)
-                        .align_y(iced::alignment::Vertical::Center)
+                    row![
+                        theme::icons::icon_sm(theme::icons::ADD),
+                        theme::typography::body("Add New Group")
+                    ]
+                    .spacing(theme::spacing::SM)
+                    .align_y(iced::alignment::Vertical::Center)
                 )
                 .style(button::primary)
                 .padding(theme::padding::SM)
@@ -213,7 +216,7 @@ impl NetworkConfig {
                     Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::MD)),
                     button(
                         row![
-                            text("+").size(16),
+                            theme::icons::icon_sm(theme::icons::ADD),
                             theme::typography::body("Create First Group")
                         ]
                         .spacing(theme::spacing::SM)

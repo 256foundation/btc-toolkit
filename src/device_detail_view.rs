@@ -58,9 +58,11 @@ impl DeviceDetailView {
                     self.view_loading_header(ip),
                     container(
                         column![
-                            text("⟳").size(64),
-                            text("Loading miner data...").size(20),
-                            text(format!("Fetching complete data from {}", ip)).size(14),
+                            text("...").size(64).style(|_theme: &iced::Theme| {
+                                text::Style { color: Some(theme::colors::PRIMARY) }
+                            }),
+                            theme::typography::heading("Loading miner data..."),
+                            theme::typography::body(format!("Fetching complete data from {}", ip)),
                         ]
                         .spacing(theme::spacing::MD)
                         .align_x(iced::Alignment::Center)
@@ -111,11 +113,9 @@ impl DeviceDetailView {
                     self.view_error_header(),
                     container(
                         column![
-                            text("✗").size(64).style(|_theme: &iced::Theme| {
-                                text::Style { color: Some(Color::from_rgb(0.9, 0.2, 0.2)) }
-                            }),
-                            text("Failed to load miner data").size(20),
-                            text(error).size(14),
+                            theme::icons::icon_size(theme::icons::ERROR, 64),
+                            theme::typography::heading("Failed to load miner data"),
+                            theme::typography::body(error),
                         ]
                         .spacing(theme::spacing::MD)
                         .align_x(iced::Alignment::Center)
@@ -139,7 +139,7 @@ impl DeviceDetailView {
     fn view_loading_header(&self, ip: &IpAddr) -> Element<'_, DeviceDetailMessage> {
         let title = theme::typography::title("Loading Device Details");
         let subtitle = theme::typography::small(format!("IP: {}", ip));
-        let back_button = secondary_button("← Back", None, Some(DeviceDetailMessage::Back));
+        let back_button = secondary_button("Back", Some(theme::icons::back().into()), Some(DeviceDetailMessage::Back));
 
         container(
             row![
@@ -157,7 +157,7 @@ impl DeviceDetailView {
 
     fn view_error_header(&self) -> Element<'_, DeviceDetailMessage> {
         let title = theme::typography::title("Error Loading Device");
-        let back_button = secondary_button("← Back", None, Some(DeviceDetailMessage::Back));
+        let back_button = secondary_button("Back", Some(theme::icons::back().into()), Some(DeviceDetailMessage::Back));
 
         container(
             row![
@@ -181,11 +181,11 @@ impl DeviceDetailView {
 
         let subtitle = theme::typography::small(format!("IP: {}", miner.ip));
 
-        let back_button = secondary_button("← Back", None, Some(DeviceDetailMessage::Back));
+        let back_button = secondary_button("Back", Some(theme::icons::back().into()), Some(DeviceDetailMessage::Back));
         let browser_button =
-            secondary_button("Open Web UI", Some("🌐"), Some(DeviceDetailMessage::OpenInBrowser));
+            secondary_button("Open Web UI", Some(theme::icons::network().into()), Some(DeviceDetailMessage::OpenInBrowser));
         let restart_button =
-            danger_button("Restart", Some("⟳"), Some(DeviceDetailMessage::Restart));
+            danger_button("Restart", Some(theme::icons::refresh().into()), Some(DeviceDetailMessage::Restart));
 
         container(
             row![
@@ -234,9 +234,7 @@ impl DeviceDetailView {
         for issue in health_report.critical_issues() {
             items = items.push(
                 row![
-                    text("✗").style(|_theme: &iced::Theme| {
-                        text::Style { color: Some(Color::from_rgb(0.9, 0.2, 0.2)) }
-                    }),
+                    theme::icons::error(),
                     text(&issue.description),
                 ]
                 .spacing(theme::spacing::SM),
@@ -247,9 +245,7 @@ impl DeviceDetailView {
         for issue in health_report.warning_issues() {
             items = items.push(
                 row![
-                    text("⚠").style(|_theme: &iced::Theme| {
-                        text::Style { color: Some(Color::from_rgb(1.0, 0.7, 0.0)) }
-                    }),
+                    theme::icons::warning(),
                     text(&issue.description),
                 ]
                 .spacing(theme::spacing::SM),
@@ -345,9 +341,9 @@ impl DeviceDetailView {
             .unwrap_or_else(|| "N/A".to_string());
 
         let mining_status = if miner.is_mining {
-            "✓ Active"
+            "Active"
         } else {
-            "✗ Inactive"
+            "Inactive"
         };
 
         let items = column![
@@ -397,10 +393,11 @@ impl DeviceDetailView {
                 container(board_info)
                     .padding(theme::padding::SM)
                     .style(|_theme: &iced::Theme| container::Style {
-                        background: Some(iced::Background::Color(Color::from_rgb(0.95, 0.95, 0.95))),
+                        background: Some(iced::Background::Color(theme::colors::BACKGROUND_ELEVATED)),
                         border: iced::Border {
                             radius: 4.0.into(),
-                            ..Default::default()
+                            width: 1.0,
+                            color: theme::colors::BORDER_SUBTLE,
                         },
                         ..container::Style::default()
                     })
@@ -508,10 +505,11 @@ impl DeviceDetailView {
                 container(pool_info)
                     .padding(theme::padding::SM)
                     .style(|_theme: &iced::Theme| container::Style {
-                        background: Some(iced::Background::Color(Color::from_rgb(0.95, 0.95, 0.95))),
+                        background: Some(iced::Background::Color(theme::colors::BACKGROUND_ELEVATED)),
                         border: iced::Border {
                             radius: 4.0.into(),
-                            ..Default::default()
+                            width: 1.0,
+                            color: theme::colors::BORDER_SUBTLE,
                         },
                         ..container::Style::default()
                     })
@@ -537,9 +535,7 @@ impl DeviceDetailView {
         for msg in &miner.messages {
             items = items.push(
                 row![
-                    text("⚠").style(|_theme: &iced::Theme| {
-                        text::Style { color: Some(Color::from_rgb(1.0, 0.7, 0.0)) }
-                    }),
+                    theme::icons::warning(),
                     text(&msg.message),
                 ]
                 .spacing(theme::spacing::SM),
@@ -558,7 +554,7 @@ impl DeviceDetailView {
             text(format!("{}:", label.to_string()))
                 .width(Length::FillPortion(1))
                 .style(|_theme: &iced::Theme| {
-                    text::Style { color: Some(Color::from_rgb(0.5, 0.5, 0.5)) }
+                    text::Style { color: Some(theme::colors::TEXT_SECONDARY) }
                 }),
             text(value.to_string()).width(Length::FillPortion(2)),
         ]

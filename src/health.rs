@@ -95,9 +95,9 @@ impl HealthStatus {
 
     pub fn icon(&self) -> &'static str {
         match self {
-            HealthStatus::Healthy => "✓",
-            HealthStatus::Warning => "⚠",
-            HealthStatus::Critical => "✗",
+            HealthStatus::Healthy => "OK",
+            HealthStatus::Warning => "!",
+            HealthStatus::Critical => "X",
             HealthStatus::Unknown => "?",
         }
     }
