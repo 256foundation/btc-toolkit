@@ -1,42 +1,47 @@
-use std::fmt;
+use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
 pub enum ConfigError {
+    #[error("Config file not found: {0}")]
     FileNotFound(String),
+
+    #[error("Config serialization error: {0}")]
     Serialization(String),
+
+    #[error("IO error: {0}")]
+    Io(String),
 }
 
-impl fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ConfigError::FileNotFound(path) => write!(f, "Config file not found: {}", path),
-            ConfigError::Serialization(msg) => write!(f, "Config serialization error: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for ConfigError {}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
 pub enum ScannerError {
+    #[error("Invalid network range: {0}")]
     NetworkRangeInvalid(String),
+
+    #[error("Communication channel closed")]
     ChannelClosed,
+
+    #[error("Thread execution error: {0}")]
     ThreadError(String),
+
+    #[error("Runtime creation failed: {0}")]
+    RuntimeError(String),
 }
 
-impl fmt::Display for ScannerError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ScannerError::NetworkRangeInvalid(range) => {
-                write!(f, "Invalid network range: {}", range)
-            }
-            ScannerError::ChannelClosed => write!(f, "Communication channel closed"),
-            ScannerError::ThreadError(msg) => write!(f, "Thread execution error: {}", msg),
-        }
-    }
-}
+#[derive(Debug, Clone, Error)]
+pub enum FetchError {
+    #[error("Failed to create Tokio runtime: {0}")]
+    RuntimeCreation(String),
 
-impl std::error::Error for ScannerError {}
+    #[error("Failed to create miner factory: {0}")]
+    FactoryCreation(String),
+
+    #[error("No miner found at {0}")]
+    MinerNotFound(String),
+
+    #[error("Failed to get miner data: {0}")]
+    MinerDataError(String),
+}
 
 pub type ConfigResult<T> = Result<T, ConfigError>;
 pub type ScannerResult<T> = Result<T, ScannerError>;
+pub type FetchResult<T> = Result<T, FetchError>;

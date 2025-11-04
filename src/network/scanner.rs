@@ -28,8 +28,26 @@ struct ThrottledProgress {
     scanned_count: usize,
 }
 
-fn calculate_buffer_size(estimated_ips: usize) -> usize {
-    (50 + estimated_ips / 10).clamp(50, 1000)
+/// Calculates an appropriate buffer size for the channel based on estimated IP count.
+///
+/// Uses a dynamic buffer size to balance memory usage and performance:
+/// - Minimum: 50 (for small networks)
+/// - Maximum: 1000 (to prevent excessive memory usage)
+/// - Formula: 50 + (estimated_ips / 10)
+const fn calculate_buffer_size(estimated_ips: usize) -> usize {
+    const MIN_BUFFER: usize = 50;
+    const MAX_BUFFER: usize = 1000;
+    const DIVISOR: usize = 10;
+
+    let calculated = MIN_BUFFER + estimated_ips / DIVISOR;
+
+    if calculated < MIN_BUFFER {
+        MIN_BUFFER
+    } else if calculated > MAX_BUFFER {
+        MAX_BUFFER
+    } else {
+        calculated
+    }
 }
 
 async fn get_partial_data(miner: Box<dyn GetMinerData>) -> MinerData {
@@ -146,21 +164,22 @@ impl Scanner {
         group_name: &str,
     ) -> ScannerResult<()> {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<MinerData>();
-
         let (progress_tx, mut progress_rx) =
             tokio::sync::mpsc::unbounded_channel::<ThrottledProgress>();
 
-        let network_range = network_range.to_owned();
+        // Clone only what we need for the thread
+        let network_range = network_range.to_string();
         let config = config.clone();
-        let group_name_clone = group_name.to_owned();
+        let group_name = group_name.to_string();
+        let group_name_for_thread = group_name.clone();
 
         // Create dedicated Tokio runtime for CPU-intensive scanning
         let rt = Runtime::new()
-            .map_err(|e| ScannerError::ThreadError(format!("Failed to create runtime: {e}")))?;
+            .map_err(|e| ScannerError::RuntimeError(e.to_string()))?;
 
         let scan_handle = std::thread::spawn(move || {
             rt.block_on(async move {
-                Self::scan_network(&network_range, &config, tx, progress_tx, group_name_clone).await
+                Self::scan_network(&network_range, &config, tx, progress_tx, group_name_for_thread).await
             })
         });
 
@@ -214,14 +233,9 @@ impl Scanner {
         }
 
         // Wait for the background thread to complete
-        match scan_handle.join() {
-            Ok(result) => result.map_err(ScannerError::ThreadError)?,
-            Err(_) => {
-                return Err(ScannerError::ThreadError(
-                    "Background thread panicked".to_string(),
-                ));
-            }
-        }
+        scan_handle
+            .join()
+            .map_err(|_| ScannerError::ThreadError("Background scan thread panicked".to_string()))??;
 
         Ok(())
     }
@@ -232,7 +246,7 @@ impl Scanner {
         tx: tokio::sync::mpsc::UnboundedSender<MinerData>,
         progress_tx: tokio::sync::mpsc::UnboundedSender<ThrottledProgress>,
         group_name: String,
-    ) -> Result<(), String> {
+    ) -> ScannerResult<()> {
         let factory = super::create_configured_miner_factory(network_range, config)?;
         let total_ips = factory.hosts().len();
 

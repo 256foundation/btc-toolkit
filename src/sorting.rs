@@ -7,6 +7,17 @@ pub enum SortDirection {
     Descending,
 }
 
+impl SortDirection {
+    /// Returns the opposite direction.
+    #[must_use]
+    pub const fn toggle(self) -> Self {
+        match self {
+            Self::Ascending => Self::Descending,
+            Self::Descending => Self::Ascending,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortColumn {
     IpAddress,
@@ -16,6 +27,9 @@ pub enum SortColumn {
     FirmwareVersion,
 }
 
+/// Sorts a slice of miners by the specified column and direction.
+///
+/// This function performs an in-place sort, modifying the input slice.
 pub fn sort_miners_by_column(
     miners: &mut [MinerData],
     column: SortColumn,

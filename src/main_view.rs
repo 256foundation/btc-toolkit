@@ -19,6 +19,7 @@ pub enum MainViewMessage {
     StopScan,
     AddGroup,
     OpenIpInBrowser(Ipv4Addr),
+    OpenDeviceDetail(Ipv4Addr),
     MinerFound {
         group_name: String,
         miner: MinerData,
@@ -125,6 +126,10 @@ impl MainView {
                 if let Err(e) = opener::open(&url) {
                     eprintln!("Failed to open URL {}: {}", url, e);
                 }
+                Task::none()
+            }
+            MainViewMessage::OpenDeviceDetail(_ip) => {
+                // This is handled at the BtcToolkit level, not here
                 Task::none()
             }
             MainViewMessage::MinerFound { group_name, miner } => {
@@ -240,10 +245,7 @@ impl MainView {
             }
             MainViewMessage::SortColumn(column) => {
                 if Some(column) == self.sort_column {
-                    self.sort_direction = match self.sort_direction {
-                        SortDirection::Ascending => SortDirection::Descending,
-                        SortDirection::Descending => SortDirection::Ascending,
-                    };
+                    self.sort_direction = self.sort_direction.toggle();
                 } else {
                     self.sort_column = Some(column);
                     self.sort_direction = SortDirection::Ascending;
@@ -673,50 +675,50 @@ impl MainView {
                 std::net::IpAddr::V6(_) => continue,
             };
 
-            let miner_row = container(
-                row![
-                    container(
-                        button(theme::typography::mono(miner_ip.to_string()))
-                            .style(button::text)
-                            .padding(0)
-                            .on_press(MainViewMessage::OpenIpInBrowser(miner_ip))
-                    )
-                    .align_x(iced::alignment::Horizontal::Left)
-                    .width(Length::FillPortion(3))
-                    .padding(theme::padding::XS),
-                    container(theme::typography::body(
-                        format!("{}", miner.device_info.model).replace("Plus", "+")
-                    ))
-                    .align_x(iced::alignment::Horizontal::Left)
-                    .width(Length::FillPortion(3))
-                    .padding(theme::padding::XS),
-                    container(theme::typography::body(format!(
-                        "{}",
-                        miner.device_info.make
-                    )))
-                    .align_x(iced::alignment::Horizontal::Left)
-                    .width(Length::FillPortion(2))
-                    .padding(theme::padding::XS),
-                    container(theme::typography::body(format!(
-                        "{}",
-                        miner.device_info.firmware
-                    )))
-                    .align_x(iced::alignment::Horizontal::Left)
-                    .width(Length::FillPortion(2))
-                    .padding(theme::padding::XS),
-                    container(theme::typography::body(format!(
-                        "{}",
-                        miner.firmware_version.as_ref().unwrap_or(&"-".to_string())
-                    )))
-                    .align_x(iced::alignment::Horizontal::Left)
-                    .width(Length::FillPortion(2))
-                    .padding(theme::padding::XS),
-                ]
-                .spacing(theme::spacing::SM)
-                .align_y(iced::alignment::Vertical::Center),
+            let miner_row = button(
+                container(
+                    row![
+                        container(theme::typography::mono(miner_ip.to_string()))
+                            .align_x(iced::alignment::Horizontal::Left)
+                            .width(Length::FillPortion(3))
+                            .padding(theme::padding::XS),
+                        container(theme::typography::body(
+                            format!("{}", miner.device_info.model).replace("Plus", "+")
+                        ))
+                        .align_x(iced::alignment::Horizontal::Left)
+                        .width(Length::FillPortion(3))
+                        .padding(theme::padding::XS),
+                        container(theme::typography::body(format!(
+                            "{}",
+                            miner.device_info.make
+                        )))
+                        .align_x(iced::alignment::Horizontal::Left)
+                        .width(Length::FillPortion(2))
+                        .padding(theme::padding::XS),
+                        container(theme::typography::body(format!(
+                            "{}",
+                            miner.device_info.firmware
+                        )))
+                        .align_x(iced::alignment::Horizontal::Left)
+                        .width(Length::FillPortion(2))
+                        .padding(theme::padding::XS),
+                        container(theme::typography::body(
+                            miner.firmware_version.as_deref().unwrap_or("-")
+                        ))
+                        .align_x(iced::alignment::Horizontal::Left)
+                        .width(Length::FillPortion(2))
+                        .padding(theme::padding::XS),
+                    ]
+                    .spacing(theme::spacing::SM)
+                    .align_y(iced::alignment::Vertical::Center),
+                )
+                .style(theme::containers::card)
+                .padding(theme::padding::SM)
+                .width(Length::Fill)
             )
-            .style(theme::containers::card)
-            .padding(theme::padding::SM)
+            .style(button::text)
+            .padding(0)
+            .on_press(MainViewMessage::OpenDeviceDetail(miner_ip))
             .width(Length::Fill);
 
             miners_list = miners_list.push(miner_row);

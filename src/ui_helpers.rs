@@ -51,18 +51,47 @@ pub fn danger_button<'a, Message: Clone + 'a>(
     create_button(label, icon, iced::widget::button::danger, message)
 }
 
-pub fn calculate_progress(completed: usize, total: usize) -> f32 {
+/// Calculates progress as a value between 0.0 and 1.0.
+///
+/// Returns 0.0 if total is 0, otherwise returns completed/total clamped to [0.0, 1.0].
+#[inline]
+pub const fn calculate_progress(completed: usize, total: usize) -> f32 {
     if total == 0 {
         0.0
     } else {
-        (completed as f32 / total as f32).clamp(0.0, 1.0)
+        let progress = completed as f32 / total as f32;
+        // Manual clamp since f32::clamp is not const
+        if progress < 0.0 {
+            0.0
+        } else if progress > 1.0 {
+            1.0
+        } else {
+            progress
+        }
     }
 }
 
+/// Formats a duration in seconds to a human-readable string.
+///
+/// # Examples
+/// - 0-59 seconds: "45s"
+/// - 1-59 minutes: "2m 30s"
+/// - 1+ hours: "1h 30m"
 pub fn format_duration(seconds: u64) -> String {
+    const MINUTE: u64 = 60;
+    const HOUR: u64 = 3600;
+
     match seconds {
-        0..=59 => format!("{}s", seconds),
-        60..=3599 => format!("{}m {}s", seconds / 60, seconds % 60),
-        _ => format!("{}h {}m", seconds / 3600, (seconds % 3600) / 60),
+        0..MINUTE => format!("{seconds}s"),
+        MINUTE..HOUR => {
+            let minutes = seconds / MINUTE;
+            let secs = seconds % MINUTE;
+            format!("{minutes}m {secs}s")
+        }
+        _ => {
+            let hours = seconds / HOUR;
+            let minutes = (seconds % HOUR) / MINUTE;
+            format!("{hours}h {minutes}m")
+        }
     }
 }

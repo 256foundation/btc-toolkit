@@ -51,17 +51,24 @@ impl AppConfig {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> ConfigResult<Self> {
         let path_ref = path.as_ref();
         let content = fs::read_to_string(path_ref)
-            .map_err(|_| ConfigError::FileNotFound(path_ref.display().to_string()))?;
-        let config: AppConfig = serde_json::from_str(&content)
-            .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-        Ok(config)
+            .map_err(|e| {
+                if e.kind() == std::io::ErrorKind::NotFound {
+                    ConfigError::FileNotFound(path_ref.display().to_string())
+                } else {
+                    ConfigError::Io(format!("{}: {}", path_ref.display(), e))
+                }
+            })?;
+
+        serde_json::from_str(&content)
+            .map_err(|e| ConfigError::Serialization(e.to_string()))
     }
 
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> ConfigResult<()> {
         let content = serde_json::to_string_pretty(self)
             .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-        fs::write(path, content).map_err(|e| ConfigError::Serialization(e.to_string()))?;
-        Ok(())
+
+        fs::write(path.as_ref(), content)
+            .map_err(|e| ConfigError::Io(format!("{}: {}", path.as_ref().display(), e)))
     }
 
     pub fn load() -> Self {
@@ -88,16 +95,18 @@ impl AppConfig {
     pub fn remove_scan_group(&mut self, name: &str) -> bool {
         let initial_len = self.scan_groups.len();
         self.scan_groups.retain(|group| group.name != name);
-        self.scan_groups.len() != initial_len
+        self.scan_groups.len() < initial_len
     }
 
     pub fn update_scan_group(&mut self, name: &str, updated_group: ScanGroup) -> bool {
-        if let Some(group) = self.scan_groups.iter_mut().find(|g| g.name == name) {
-            *group = updated_group;
-            true
-        } else {
-            false
-        }
+        self.scan_groups
+            .iter_mut()
+            .find(|g| g.name == name)
+            .map(|group| {
+                *group = updated_group;
+                true
+            })
+            .unwrap_or(false)
     }
 
     pub fn get_enabled_groups(&self) -> Vec<&ScanGroup> {

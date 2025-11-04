@@ -1,5 +1,7 @@
 mod config;
+mod device_detail_view;
 mod errors;
+mod health;
 mod main_view;
 mod network;
 mod network_config;
@@ -8,9 +10,11 @@ mod theme;
 mod ui_helpers;
 
 use crate::config::AppConfig;
+use crate::device_detail_view::{DeviceDetailMessage, DeviceDetailView};
 use crate::main_view::{MainView, MainViewMessage};
 use crate::network::scanner::{Scanner, ScannerMessage};
 use crate::network_config::{NetworkConfig, NetworkConfigMessage};
+use std::net::IpAddr;
 use iced::{Element, Size, Subscription, Task, window};
 use mimalloc::MiMalloc;
 
@@ -37,12 +41,14 @@ async fn main() -> iced::Result {
 enum Page {
     Main,
     NetworkConfig,
+    DeviceDetail(IpAddr),
 }
 
 struct BtcToolkit {
     current_page: Page,
     main_view: MainView,
     network_config: NetworkConfig,
+    device_detail_view: Option<DeviceDetailView>,
     active_scan: Option<Vec<network::scanner::ScanGroup>>,
     app_config: AppConfig,
 }
@@ -60,6 +66,7 @@ impl BtcToolkit {
             current_page: Page::Main,
             main_view,
             network_config,
+            device_detail_view: None,
             active_scan: None,
             app_config,
         }
@@ -76,6 +83,7 @@ impl BtcToolkit {
 enum BtcToolkitMessage {
     MainView(MainViewMessage),
     NetworkConfig(NetworkConfigMessage),
+    DeviceDetail(DeviceDetailMessage),
     Scanner(ScannerMessage),
 }
 
@@ -85,6 +93,24 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
             MainViewMessage::OpenNetworkConfig | MainViewMessage::AddGroup => {
                 state.current_page = Page::NetworkConfig;
                 Task::none()
+            }
+
+            MainViewMessage::OpenDeviceDetail(ip) => {
+                // Set loading state and trigger full data fetch
+                state.device_detail_view = Some(DeviceDetailView::new_loading(IpAddr::V4(ip)));
+                state.current_page = Page::DeviceDetail(IpAddr::V4(ip));
+
+                // Fetch full miner data
+                // Note: We use the synchronous version that creates its own Tokio runtime
+                // since Task::perform runs on a thread pool (not Tokio runtime)
+                Task::perform(
+                    async move {
+                        network::full_fetch::fetch_full_miner_data(IpAddr::V4(ip))
+                    },
+                    |result| {
+                        BtcToolkitMessage::DeviceDetail(DeviceDetailMessage::DataFetched(result))
+                    }
+                )
             }
 
             MainViewMessage::StartScan => {
@@ -142,6 +168,35 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
             }
         }
 
+        BtcToolkitMessage::DeviceDetail(message) => {
+            match message {
+                DeviceDetailMessage::Back => {
+                    state.current_page = Page::Main;
+                    state.device_detail_view = None;
+                    Task::none()
+                }
+                DeviceDetailMessage::DataFetched(result) => {
+                    // Update the device detail view with fetched data
+                    if let Some(ref mut view) = state.device_detail_view {
+                        view.update_with_data(result);
+                    }
+                    Task::none()
+                }
+                DeviceDetailMessage::OpenInBrowser => {
+                    // This could be implemented using the opener crate
+                    // For now, just return Task::none()
+                    Task::none()
+                }
+                DeviceDetailMessage::Restart
+                | DeviceDetailMessage::SetPowerLimit
+                | DeviceDetailMessage::ToggleFaultLight => {
+                    // These would require implementing the control features from asic-rs
+                    // For now, just return Task::none()
+                    Task::none()
+                }
+            }
+        }
+
         BtcToolkitMessage::Scanner(scanner_msg) => {
             match scanner_msg {
                 ScannerMessage::MinerDiscovered { group_name, miner } => {
@@ -192,11 +247,19 @@ fn subscription(state: &BtcToolkit) -> Subscription<BtcToolkitMessage> {
 }
 
 fn view(state: &BtcToolkit) -> Element<'_, BtcToolkitMessage> {
-    match state.current_page {
+    match &state.current_page {
         Page::Main => state.main_view.view().map(BtcToolkitMessage::MainView),
         Page::NetworkConfig => state
             .network_config
             .view()
             .map(BtcToolkitMessage::NetworkConfig),
+        Page::DeviceDetail(_ip) => {
+            if let Some(ref device_view) = state.device_detail_view {
+                device_view.view().map(BtcToolkitMessage::DeviceDetail)
+            } else {
+                // Fallback to main view if no device detail available
+                state.main_view.view().map(BtcToolkitMessage::MainView)
+            }
+        }
     }
 }
