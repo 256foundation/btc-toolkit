@@ -314,13 +314,13 @@ impl DeviceDetailView {
         let hashrate_str = miner
             .hashrate
             .as_ref()
-            .map(|hr| format!("{:.2} TH/s", hr.value))
+            .map(|hr| format!("{:.2}", hr))
             .unwrap_or_else(|| "N/A".to_string());
 
         let expected_hashrate_str = miner
             .expected_hashrate
             .as_ref()
-            .map(|hr| format!("{:.2} TH/s", hr.value))
+            .map(|hr| format!("{:.2}", hr))
             .unwrap_or_else(|| "N/A".to_string());
 
         let hashrate_percentage = miner
@@ -381,7 +381,7 @@ impl DeviceDetailView {
                     board
                         .hashrate
                         .as_ref()
-                        .map(|hr| format!("{:.2} TH/s", hr.value))
+                        .map(|hr| format!("{:.2}", hr))
                         .unwrap_or_else(|| "N/A".to_string())
                 ),
             ]
