@@ -23,8 +23,12 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-#[tokio::main]
-async fn main() -> iced::Result {
+/// Main entry point
+///
+/// Note: We don't use #[tokio::main] because iced with the "tokio" feature flag
+/// manages its own tokio runtime internally. Using #[tokio::main] would create
+/// a nested runtime situation that causes panics during shutdown.
+fn main() -> iced::Result {
     iced::application("BTC Toolkit", update, view)
         .subscription(subscription)
         .window(window::Settings {
@@ -101,12 +105,10 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
                 state.current_page = Page::DeviceDetail(IpAddr::V4(ip));
 
                 // Fetch full miner data
-                // Note: We use the synchronous version that creates its own Tokio runtime
-                // since Task::perform runs on a thread pool (not Tokio runtime)
+                // Note: With iced's tokio feature enabled, Task::perform runs on the
+                // shared tokio runtime, so we use the async version directly
                 Task::perform(
-                    async move {
-                        network::full_fetch::fetch_full_miner_data(IpAddr::V4(ip))
-                    },
+                    network::full_fetch::fetch_full_miner_data_async(IpAddr::V4(ip)),
                     |result| {
                         BtcToolkitMessage::DeviceDetail(DeviceDetailMessage::DataFetched(result))
                     }
@@ -183,8 +185,13 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
                     Task::none()
                 }
                 DeviceDetailMessage::OpenInBrowser => {
-                    // This could be implemented using the opener crate
-                    // For now, just return Task::none()
+                    // Extract IP from current page and open in browser
+                    if let Page::DeviceDetail(ip) = state.current_page {
+                        let url = format!("http://{}", ip);
+                        if let Err(e) = opener::open(&url) {
+                            eprintln!("Failed to open URL {}: {}", url, e);
+                        }
+                    }
                     Task::none()
                 }
                 DeviceDetailMessage::Restart

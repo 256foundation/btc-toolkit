@@ -16,6 +16,7 @@ pub const ADD: &[u8] = include_bytes!("../../assets/icons/add.svg");
 pub const PLAY: &[u8] = include_bytes!("../../assets/icons/play.svg");
 pub const STOP: &[u8] = include_bytes!("../../assets/icons/stop.svg");
 pub const NETWORK: &[u8] = include_bytes!("../../assets/icons/network.svg");
+pub const QUESTION_MARK: &[u8] = include_bytes!("../../assets/icons/question-mark-circle.svg");
 
 /// Standard icon size for buttons and UI elements
 pub const ICON_SIZE: u16 = 20;
@@ -94,4 +95,8 @@ pub fn stop() -> Svg<'static> {
 
 pub fn network() -> Svg<'static> {
     icon(NETWORK)
+}
+
+pub fn question_mark() -> Svg<'static> {
+    icon(QUESTION_MARK)
 }

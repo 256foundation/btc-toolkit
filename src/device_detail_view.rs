@@ -58,9 +58,7 @@ impl DeviceDetailView {
                     self.view_loading_header(ip),
                     container(
                         column![
-                            text("...").size(64).style(|_theme: &iced::Theme| {
-                                text::Style { color: Some(theme::colors::PRIMARY) }
-                            }),
+                            theme::icons::icon_size(theme::icons::REFRESH, 64),
                             theme::typography::heading("Loading miner data..."),
                             theme::typography::body(format!("Fetching complete data from {}", ip)),
                         ]
@@ -205,7 +203,7 @@ impl DeviceDetailView {
         let status_color = health_report.status.color();
         let status_badge = container(
             row![
-                text(health_report.status.icon()).size(20),
+                theme::icons::icon_size(health_report.status.svg_icon(), 20),
                 text(health_report.status.label()).size(16)
             ]
             .spacing(theme::spacing::SM)

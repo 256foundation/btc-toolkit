@@ -2,7 +2,7 @@ use crate::config::{AppConfig, ScanGroup};
 use crate::network::scanner::ScanConfig;
 use crate::theme;
 use asic_rs::data::device::{MinerFirmware, MinerMake};
-use iced::widget::{Space, button, checkbox, column, container, row, scrollable, text, text_input};
+use iced::widget::{Space, button, checkbox, column, container, row, scrollable, text_input};
 use iced::{Element, Length};
 use std::collections::HashSet;
 

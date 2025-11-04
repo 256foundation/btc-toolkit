@@ -22,9 +22,6 @@ pub enum ScannerError {
 
     #[error("Thread execution error: {0}")]
     ThreadError(String),
-
-    #[error("Runtime creation failed: {0}")]
-    RuntimeError(String),
 }
 
 #[derive(Debug, Clone, Error)]

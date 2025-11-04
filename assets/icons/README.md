@@ -11,18 +11,19 @@ All icons in this directory are from **[Heroicons](https://github.com/tailwindla
 
 ## Current Icons
 
-| File             | Icon Name            | Usage                  |
-| ---------------- | -------------------- | ---------------------- |
-| `arrow-left.svg` | Arrow Left           | Back navigation        |
-| `cog.svg`        | Cog (Settings)       | Settings/configuration |
-| `refresh.svg`    | Arrow Path           | Refresh/reload         |
-| `check.svg`      | Check Circle         | Success status         |
-| `warning.svg`    | Exclamation Triangle | Warning status         |
-| `error.svg`      | X Circle             | Error status           |
-| `add.svg`        | Plus Circle          | Add/create actions     |
-| `play.svg`       | Play                 | Start/play actions     |
-| `stop.svg`       | Stop                 | Stop actions           |
-| `network.svg`    | Globe Alt            | Network/internet       |
+| File                       | Icon Name            | Usage                  |
+| -------------------------- | -------------------- | ---------------------- |
+| `arrow-left.svg`           | Arrow Left           | Back navigation        |
+| `cog.svg`                  | Cog (Settings)       | Settings/configuration |
+| `refresh.svg`              | Arrow Path           | Refresh/reload         |
+| `check.svg`                | Check Circle         | Success status         |
+| `warning.svg`              | Exclamation Triangle | Warning status         |
+| `error.svg`                | X Circle             | Error status           |
+| `question-mark-circle.svg` | Question Mark Circle | Unknown status         |
+| `add.svg`                  | Plus Circle          | Add/create actions     |
+| `play.svg`                 | Play                 | Start/play actions     |
+| `stop.svg`                 | Stop                 | Stop actions           |
+| `network.svg`              | Globe Alt            | Network/internet       |
 
 ## Adding New Icons
 

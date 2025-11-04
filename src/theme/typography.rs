@@ -92,31 +92,38 @@ pub fn mono_xl<T: Into<String>>(content: T) -> text::Text<'static> {
 
 // Colored text helpers
 
+// Theme API functions - may be unused but part of design system
+#[allow(dead_code)]
 /// Success text - green for positive indicators
 pub fn success<T: Into<String>>(content: T) -> text::Text<'static> {
     text(content.into()).size(BODY_SIZE).color(colors::SUCCESS)
 }
 
+#[allow(dead_code)]
 /// Warning text - orange for caution
 pub fn warning<T: Into<String>>(content: T) -> text::Text<'static> {
     text(content.into()).size(BODY_SIZE).color(colors::WARNING)
 }
 
+#[allow(dead_code)]
 /// Danger text - red for errors
 pub fn danger<T: Into<String>>(content: T) -> text::Text<'static> {
     text(content.into()).size(BODY_SIZE).color(colors::DANGER)
 }
 
+#[allow(dead_code)]
 /// Primary colored text - industrial blue
 pub fn primary<T: Into<String>>(content: T) -> text::Text<'static> {
     text(content.into()).size(BODY_SIZE).color(colors::PRIMARY)
 }
 
+#[allow(dead_code)]
 /// Accent colored text - bright cyan
 pub fn accent<T: Into<String>>(content: T) -> text::Text<'static> {
     text(content.into()).size(BODY_SIZE).color(colors::ACCENT)
 }
 
+#[allow(dead_code)]
 /// Disabled text
 pub fn disabled<T: Into<String>>(content: T) -> text::Text<'static> {
     text(content.into())
@@ -124,6 +131,7 @@ pub fn disabled<T: Into<String>>(content: T) -> text::Text<'static> {
         .color(colors::TEXT_DISABLED)
 }
 
+#[allow(dead_code)]
 /// Label text with icon - combines icon and text
 pub fn with_icon<T: Into<String>>(icon: &str, content: T) -> String {
     format!("{} {}", icon, content.into())

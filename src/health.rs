@@ -2,6 +2,16 @@ use asic_rs::data::miner::MinerData;
 use iced::Color;
 use serde::{Deserialize, Serialize};
 
+// Health threshold constants
+const CHIP_HEALTH_CRITICAL_THRESHOLD: f64 = 0.90;
+const CHIP_HEALTH_WARNING_THRESHOLD: f64 = 0.95;
+const HASHRATE_CRITICAL_THRESHOLD: f64 = 0.50;
+const HASHRATE_WARNING_THRESHOLD: f64 = 0.80;
+const TEMP_CRITICAL_CELSIUS: f64 = 85.0;
+const TEMP_WARNING_CELSIUS: f64 = 75.0;
+const FAN_STOPPED_RPM: f64 = 0.0;
+const BOARD_NO_CHIPS: u16 = 0;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum HealthStatus {
     Healthy,
@@ -24,9 +34,9 @@ impl HealthStatus {
         // Chip health check
         if let (Some(total), Some(expected)) = (miner.total_chips, miner.expected_chips) {
             let chip_health_ratio = total as f64 / expected as f64;
-            if chip_health_ratio < 0.90 {
+            if chip_health_ratio < CHIP_HEALTH_CRITICAL_THRESHOLD {
                 critical_count += 1;
-            } else if chip_health_ratio < 0.95 {
+            } else if chip_health_ratio < CHIP_HEALTH_WARNING_THRESHOLD {
                 warning_count += 1;
             }
         }
@@ -34,9 +44,9 @@ impl HealthStatus {
         // Hashrate health check
         if let (Some(current), Some(expected)) = (&miner.hashrate, &miner.expected_hashrate) {
             let hashrate_ratio = current.value / expected.value;
-            if hashrate_ratio < 0.50 {
+            if hashrate_ratio < HASHRATE_CRITICAL_THRESHOLD {
                 critical_count += 1;
-            } else if hashrate_ratio < 0.80 {
+            } else if hashrate_ratio < HASHRATE_WARNING_THRESHOLD {
                 warning_count += 1;
             }
         }
@@ -44,9 +54,9 @@ impl HealthStatus {
         // Temperature check
         if let Some(temp) = miner.average_temperature {
             let temp_c = temp.as_celsius();
-            if temp_c > 85.0 {
+            if temp_c > TEMP_CRITICAL_CELSIUS {
                 critical_count += 1;
-            } else if temp_c > 75.0 {
+            } else if temp_c > TEMP_WARNING_CELSIUS {
                 warning_count += 1;
             }
         }
@@ -54,7 +64,7 @@ impl HealthStatus {
         // Fan check - any fan at 0 RPM is critical
         for fan in &miner.fans {
             if let Some(rpm) = fan.rpm {
-                if rpm.as_rpm() == 0.0 {
+                if rpm.as_rpm() == FAN_STOPPED_RPM {
                     critical_count += 1;
                     break;
                 }
@@ -63,7 +73,7 @@ impl HealthStatus {
 
         // Board health check - any board with 0 chips is critical
         for board in &miner.hashboards {
-            if board.working_chips == Some(0) || board.working_chips.is_none() {
+            if board.working_chips == Some(BOARD_NO_CHIPS) || board.working_chips.is_none() {
                 critical_count += 1;
                 break;
             }
@@ -93,12 +103,23 @@ impl HealthStatus {
         }
     }
 
+    /// Returns text representation of icon (deprecated - use svg_icon instead)
     pub fn icon(&self) -> &'static str {
         match self {
             HealthStatus::Healthy => "OK",
             HealthStatus::Warning => "!",
             HealthStatus::Critical => "X",
             HealthStatus::Unknown => "?",
+        }
+    }
+
+    /// Returns the appropriate SVG icon data for this health status
+    pub fn svg_icon(&self) -> &'static [u8] {
+        match self {
+            HealthStatus::Healthy => crate::theme::icons::CHECK,
+            HealthStatus::Warning => crate::theme::icons::WARNING,
+            HealthStatus::Critical => crate::theme::icons::ERROR,
+            HealthStatus::Unknown => crate::theme::icons::QUESTION_MARK,
         }
     }
 

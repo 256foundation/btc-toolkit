@@ -13,7 +13,7 @@ use iced::{
     futures::{SinkExt, StreamExt, future},
     stream,
 };
-use tokio::runtime::Runtime;
+// Tokio runtime is now shared via iced's tokio feature flag
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ScanConfig {
@@ -167,20 +167,16 @@ impl Scanner {
         let (progress_tx, mut progress_rx) =
             tokio::sync::mpsc::unbounded_channel::<ThrottledProgress>();
 
-        // Clone only what we need for the thread
+        // Clone only what we need for the async task
         let network_range = network_range.to_string();
         let config = config.clone();
         let group_name = group_name.to_string();
-        let group_name_for_thread = group_name.clone();
+        let group_name_for_task = group_name.clone();
 
-        // Create dedicated Tokio runtime for CPU-intensive scanning
-        let rt = Runtime::new()
-            .map_err(|e| ScannerError::RuntimeError(e.to_string()))?;
-
-        let scan_handle = std::thread::spawn(move || {
-            rt.block_on(async move {
-                Self::scan_network(&network_range, &config, tx, progress_tx, group_name_for_thread).await
-            })
+        // Spawn scan task on shared tokio runtime
+        // This runs concurrently without blocking the UI thread
+        let scan_handle = tokio::spawn(async move {
+            Self::scan_network(&network_range, &config, tx, progress_tx, group_name_for_task).await
         });
 
         let mut last_progress_time = Instant::now();
@@ -232,10 +228,10 @@ impl Scanner {
             }
         }
 
-        // Wait for the background thread to complete
+        // Wait for the background scan task to complete
         scan_handle
-            .join()
-            .map_err(|_| ScannerError::ThreadError("Background scan thread panicked".to_string()))??;
+            .await
+            .map_err(|e| ScannerError::ThreadError(format!("Background scan task failed: {}", e)))??;
 
         Ok(())
     }

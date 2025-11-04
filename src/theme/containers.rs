@@ -3,7 +3,7 @@ use iced::{Background, Border, Color, Shadow, Theme, Vector};
 use super::colors;
 
 /// Card style - elevated surface for content sections
-pub fn card(theme: &Theme) -> container::Style {
+pub fn card(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::BACKGROUND_CARD)),
         border: Border {
@@ -21,7 +21,7 @@ pub fn card(theme: &Theme) -> container::Style {
 }
 
 /// Header style - top navigation and section headers
-pub fn header(theme: &Theme) -> container::Style {
+pub fn header(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::BACKGROUND_ELEVATED)),
         border: Border {
@@ -39,7 +39,7 @@ pub fn header(theme: &Theme) -> container::Style {
 }
 
 /// Success style - positive status indicators
-pub fn success(theme: &Theme) -> container::Style {
+pub fn success(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::SUCCESS_DIM)),
         border: Border {
@@ -57,7 +57,7 @@ pub fn success(theme: &Theme) -> container::Style {
 }
 
 /// Error style - error states and critical alerts
-pub fn error(theme: &Theme) -> container::Style {
+pub fn error(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::DANGER_DIM)),
         border: Border {
@@ -75,7 +75,7 @@ pub fn error(theme: &Theme) -> container::Style {
 }
 
 /// Warning style - caution and important notices
-pub fn warning(theme: &Theme) -> container::Style {
+pub fn warning(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::WARNING_DIM)),
         border: Border {
@@ -93,7 +93,7 @@ pub fn warning(theme: &Theme) -> container::Style {
 }
 
 /// Primary style - emphasized content
-pub fn primary(theme: &Theme) -> container::Style {
+pub fn primary(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::PRIMARY)),
         border: Border {
@@ -111,7 +111,7 @@ pub fn primary(theme: &Theme) -> container::Style {
 }
 
 /// Accent style - highlights and call-to-actions
-pub fn accent(theme: &Theme) -> container::Style {
+pub fn accent(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::ACCENT)),
         border: Border {
@@ -129,7 +129,7 @@ pub fn accent(theme: &Theme) -> container::Style {
 }
 
 /// Transparent style - borderless containers
-pub fn transparent(theme: &Theme) -> container::Style {
+pub fn transparent(_theme: &Theme) -> container::Style {
     container::Style {
         background: None,
         border: Border::default(),
@@ -139,7 +139,7 @@ pub fn transparent(theme: &Theme) -> container::Style {
 }
 
 /// Status badge style - compact status indicators
-pub fn badge(theme: &Theme) -> container::Style {
+pub fn badge(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::SURFACE_OVERLAY_20)),
         border: Border {
@@ -153,7 +153,7 @@ pub fn badge(theme: &Theme) -> container::Style {
 }
 
 /// Tooltip style - hovering information boxes
-pub fn tooltip(theme: &Theme) -> container::Style {
+pub fn tooltip(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::BACKGROUND_ELEVATED)),
         border: Border {

@@ -1,26 +1,36 @@
 use crate::errors::{FetchError, FetchResult};
 use asic_rs::{data::miner::MinerData, MinerFactory};
 use std::net::IpAddr;
-use tokio::runtime::Runtime;
+use tokio::runtime::Handle;
 
-/// Fetches complete miner data for a single IP address.
+/// Fetches complete miner data for a single IP address (blocking version).
 ///
-/// This function creates a dedicated Tokio runtime and blocks on the async fetch operation.
-/// Use this for synchronous contexts or when called from Iced's Task::perform.
+/// **⚠️ WARNING**: This function will panic if called from within an async runtime context
+/// (e.g., from within `Task::perform` or any tokio task). Use `fetch_full_miner_data_async`
+/// instead when you're already in an async context.
+///
+/// This function uses the shared Tokio runtime (via iced's tokio feature) and blocks
+/// on the async fetch operation. Only use this from synchronous, non-async contexts.
+///
+/// # Panics
+///
+/// Panics if called from within a tokio runtime context.
 ///
 /// # Errors
 ///
 /// Returns `FetchError` if:
-/// - Runtime creation fails
+/// - No tokio runtime is available (should not happen with iced's tokio feature)
 /// - Miner factory creation fails
 /// - No miner is found at the IP
 /// - Data fetching fails
 pub fn fetch_full_miner_data(ip: IpAddr) -> FetchResult<MinerData> {
-    // Create dedicated Tokio runtime for this fetch
-    let rt = Runtime::new()
-        .map_err(|e| FetchError::RuntimeCreation(e.to_string()))?;
+    // Use the current tokio runtime handle (shared via iced's tokio feature)
+    let handle = Handle::try_current()
+        .map_err(|e| FetchError::RuntimeCreation(format!("No tokio runtime available: {}", e)))?;
 
-    rt.block_on(async move {
+    // Note: This will panic if called from within a runtime context
+    // Use fetch_full_miner_data_async instead in async contexts
+    handle.block_on(async move {
         fetch_full_miner_data_internal(ip).await
     })
 }

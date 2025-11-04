@@ -54,21 +54,21 @@ pub fn danger_button<'a, Message: Clone + 'a>(
 /// Calculates progress as a value between 0.0 and 1.0.
 ///
 /// Returns 0.0 if total is 0, otherwise returns completed/total clamped to [0.0, 1.0].
+///
+/// # Examples
+/// ```
+/// use btc_toolkit::ui_helpers::calculate_progress;
+/// assert_eq!(calculate_progress(0, 0), 0.0);
+/// assert_eq!(calculate_progress(50, 100), 0.5);
+/// assert_eq!(calculate_progress(150, 100), 1.0); // Clamped to max
+/// ```
 #[inline]
-pub const fn calculate_progress(completed: usize, total: usize) -> f32 {
+pub fn calculate_progress(completed: usize, total: usize) -> f32 {
     if total == 0 {
-        0.0
-    } else {
-        let progress = completed as f32 / total as f32;
-        // Manual clamp since f32::clamp is not const
-        if progress < 0.0 {
-            0.0
-        } else if progress > 1.0 {
-            1.0
-        } else {
-            progress
-        }
+        return 0.0;
     }
+
+    (completed as f32 / total as f32).clamp(0.0, 1.0)
 }
 
 /// Formats a duration in seconds to a human-readable string.
