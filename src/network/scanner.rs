@@ -236,9 +236,7 @@ impl Scanner {
         let factory = super::create_configured_miner_factory(network_range, config)?;
         let total_ips = factory.hosts().len();
 
-        let stream = factory
-            .scan_stream_with_ip()
-            .map_err(|e| format!("Failed to create scan stream: {e}"))?;
+        let stream = factory.scan_stream_with_ip();
 
         let scanned_count = Arc::new(AtomicUsize::new(0));
 

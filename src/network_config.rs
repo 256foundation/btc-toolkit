@@ -438,8 +438,8 @@ impl NetworkConfig {
                                     .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::WhatsMiner, value)),
                                 checkbox("AvalonMiner (Canaan)", self.search_makes.contains(&MinerMake::AvalonMiner))
                                     .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::AvalonMiner, value)),
-                                checkbox("BitAxe", self.search_makes.contains(&MinerMake::BitAxe))
-                                    .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::BitAxe, value)),
+                                checkbox("BitAxe", self.search_makes.contains(&MinerMake::Bitaxe))
+                                    .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::Bitaxe, value)),
                                 checkbox("ePIC", self.search_makes.contains(&MinerMake::EPic))
                                     .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::EPic, value)),
                                 checkbox("Braiins", self.search_makes.contains(&MinerMake::Braiins))
