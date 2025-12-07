@@ -1,32 +1,17 @@
 # BTC Toolkit
 
-A modern GUI tool for managing ASIC farms with real-time network scanning and miner discovery.
+Desktop GUI for managing Bitcoin ASIC mining farms. Scan networks, discover miners, and view device details.
 
 ## Built With
 
-- [iced.rs](https://github.com/iced-rs/iced) v0.13 for responsive cross-platform UI
-- [asic-rs](https://github.com/256-Foundation/asic-rs) for miner communication
+- [iced.rs](https://github.com/iced-rs/iced) v0.14
+- [asic-rs](https://github.com/256-Foundation/asic-rs)
 
 ## Usage
 
-### Requirements
-
-- Rust toolchain (stable channel)
-
-### Running
+Requires Rust toolchain (stable).
 
 ```bash
-cargo run
+cargo run              # Debug
+cargo build --release  # Release build
 ```
-
-### Building
-
-```bash
-cargo build --release
-```
-
-## Planned Features
-
-- Hardware information display
-- Batch configuration
-- Performance monitoring
