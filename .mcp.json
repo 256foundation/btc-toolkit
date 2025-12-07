@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "asic-rs Docs": {
-      "command": "npx",
-      "args": ["mcp-remote", "https://gitmcp.io/256foundation/asic-rs"]
-    }
-  }
-}
