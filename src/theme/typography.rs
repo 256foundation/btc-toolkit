@@ -3,13 +3,13 @@ use iced::Font;
 use iced::widget::text;
 
 // Font sizes following a type scale
-pub const TITLE_SIZE: u16 = 32;
-pub const SUBTITLE_SIZE: u16 = 24;
-pub const HEADING_SIZE: u16 = 20;
-pub const SUBHEADING_SIZE: u16 = 16;
-pub const BODY_SIZE: u16 = 14;
-pub const SMALL_SIZE: u16 = 12;
-pub const TINY_SIZE: u16 = 10;
+pub const TITLE_SIZE: f32 = 32.0;
+pub const SUBTITLE_SIZE: f32 = 24.0;
+pub const HEADING_SIZE: f32 = 20.0;
+pub const SUBHEADING_SIZE: f32 = 16.0;
+pub const BODY_SIZE: f32 = 14.0;
+pub const SMALL_SIZE: f32 = 12.0;
+pub const TINY_SIZE: f32 = 10.0;
 
 // Font weights
 pub const FONT_REGULAR: Font = Font::DEFAULT;

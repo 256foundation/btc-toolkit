@@ -50,17 +50,15 @@ impl Default for AppConfig {
 impl AppConfig {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> ConfigResult<Self> {
         let path_ref = path.as_ref();
-        let content = fs::read_to_string(path_ref)
-            .map_err(|e| {
-                if e.kind() == std::io::ErrorKind::NotFound {
-                    ConfigError::FileNotFound(path_ref.display().to_string())
-                } else {
-                    ConfigError::Io(format!("{}: {}", path_ref.display(), e))
-                }
-            })?;
+        let content = fs::read_to_string(path_ref).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                ConfigError::FileNotFound(path_ref.display().to_string())
+            } else {
+                ConfigError::Io(format!("{}: {}", path_ref.display(), e))
+            }
+        })?;
 
-        serde_json::from_str(&content)
-            .map_err(|e| ConfigError::Serialization(e.to_string()))
+        serde_json::from_str(&content).map_err(|e| ConfigError::Serialization(e.to_string()))
     }
 
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> ConfigResult<()> {

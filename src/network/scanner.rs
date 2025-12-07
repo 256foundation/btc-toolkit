@@ -15,10 +15,19 @@ use iced::{
 };
 // Tokio runtime is now shared via iced's tokio feature flag
 
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct ScanConfig {
     pub search_makes: Option<Vec<MinerMake>>,
     pub search_firmwares: Option<Vec<MinerFirmware>>,
+}
+
+impl std::hash::Hash for ScanConfig {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Hash based on JSON serialization for simplicity
+        if let Ok(json) = serde_json::to_string(self) {
+            json.hash(state);
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +86,7 @@ pub enum ScannerMessage {
     AllScansCompleted,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ScanGroup {
     pub name: String,
     pub network_range: String,
@@ -102,15 +111,14 @@ pub struct Scanner;
 
 impl Scanner {
     pub fn scan_multiple_groups(groups: Vec<ScanGroup>) -> iced::Subscription<ScannerMessage> {
-        iced::Subscription::run_with_id(
-            "multi_group_scanner",
-            Self::scan_multiple_groups_stream(groups),
-        )
+        iced::Subscription::run_with(groups, Self::scan_multiple_groups_stream)
     }
 
     fn scan_multiple_groups_stream(
-        groups: Vec<ScanGroup>,
-    ) -> impl iced::futures::Stream<Item = ScannerMessage> {
+        groups: &Vec<ScanGroup>,
+    ) -> iced::futures::stream::BoxStream<'static, ScannerMessage> {
+        use iced::futures::StreamExt;
+        let groups = groups.clone();
         let total_estimated_ips: usize = groups
             .iter()
             .map(|group| super::estimate_ip_count(&group.network_range))
@@ -118,43 +126,47 @@ impl Scanner {
 
         let buffer_size = calculate_buffer_size(total_estimated_ips);
 
-        stream::channel(buffer_size, |mut output| async move {
-            use future::join_all;
+        stream::channel(
+            buffer_size,
+            |mut output: iced::futures::channel::mpsc::Sender<ScannerMessage>| async move {
+                use future::join_all;
 
-            let total_groups = groups.len();
+                let total_groups = groups.len();
 
-            if total_groups == 0 {
-                let _ = output.send(ScannerMessage::AllScansCompleted).await;
-                std::future::pending::<()>().await;
-                return;
-            }
-
-            let scan_futures = groups.into_iter().map(|group| {
-                let mut output_clone = output.clone();
-                let group_name = group.name.clone();
-
-                async move {
-                    let result = Self::perform_realtime_scan(
-                        &group.network_range,
-                        &group.config,
-                        &mut output_clone,
-                        &group.name,
-                    )
-                    .await
-                    .map_err(|e| e.to_string());
-
-                    let _ = output_clone
-                        .send(ScannerMessage::GroupScanCompleted { group_name, result })
-                        .await;
+                if total_groups == 0 {
+                    let _ = output.send(ScannerMessage::AllScansCompleted).await;
+                    std::future::pending::<()>().await;
+                    return;
                 }
-            });
 
-            join_all(scan_futures).await;
+                let scan_futures = groups.into_iter().map(|group| {
+                    let mut output_clone = output.clone();
+                    let group_name = group.name.clone();
 
-            let _ = output.send(ScannerMessage::AllScansCompleted).await;
+                    async move {
+                        let result = Self::perform_realtime_scan(
+                            &group.network_range,
+                            &group.config,
+                            &mut output_clone,
+                            &group.name,
+                        )
+                        .await
+                        .map_err(|e| e.to_string());
 
-            std::future::pending::<()>().await;
-        })
+                        let _ = output_clone
+                            .send(ScannerMessage::GroupScanCompleted { group_name, result })
+                            .await;
+                    }
+                });
+
+                join_all(scan_futures).await;
+
+                let _ = output.send(ScannerMessage::AllScansCompleted).await;
+
+                std::future::pending::<()>().await;
+            },
+        )
+        .boxed()
     }
 
     async fn perform_realtime_scan(
@@ -176,7 +188,14 @@ impl Scanner {
         // Spawn scan task on shared tokio runtime
         // This runs concurrently without blocking the UI thread
         let scan_handle = tokio::spawn(async move {
-            Self::scan_network(&network_range, &config, tx, progress_tx, group_name_for_task).await
+            Self::scan_network(
+                &network_range,
+                &config,
+                tx,
+                progress_tx,
+                group_name_for_task,
+            )
+            .await
         });
 
         let mut last_progress_time = Instant::now();
@@ -229,9 +248,9 @@ impl Scanner {
         }
 
         // Wait for the background scan task to complete
-        scan_handle
-            .await
-            .map_err(|e| ScannerError::ThreadError(format!("Background scan task failed: {}", e)))??;
+        scan_handle.await.map_err(|e| {
+            ScannerError::ThreadError(format!("Background scan task failed: {}", e))
+        })??;
 
         Ok(())
     }

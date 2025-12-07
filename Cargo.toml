@@ -6,7 +6,7 @@ description = "GUI tool for scanning local network for BTC ASIC Miners"
 authors = ["Daniel Sokil <dtechtours@gmail.com>"]
 
 [dependencies]
-iced = { version = "0.13", features = ["svg", "tokio", "lazy", "debug"] }
+iced = { version = "0.14", features = ["svg", "tokio"] }
 opener = "0.8"
 mimalloc = { version = "0.1" }
 tokio = { version = "1.48", features = ["full"] }

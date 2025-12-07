@@ -194,10 +194,7 @@ impl HealthReport {
                 issues.push(HealthIssue {
                     severity,
                     category: IssueCategory::Chips,
-                    description: format!(
-                        "Missing {} chips ({}/{})",
-                        missing, total, expected
-                    ),
+                    description: format!("Missing {} chips ({}/{})", missing, total, expected),
                 });
             }
         }
@@ -215,10 +212,7 @@ impl HealthReport {
                 issues.push(HealthIssue {
                     severity,
                     category: IssueCategory::Hashrate,
-                    description: format!(
-                        "Low hashrate ({}% of expected)",
-                        percentage
-                    ),
+                    description: format!("Low hashrate ({}% of expected)", percentage),
                 });
             }
         }
@@ -241,9 +235,11 @@ impl HealthReport {
         }
 
         // Fan issues
-        let dead_fans = miner.fans.iter().filter(|f| {
-            f.rpm.map(|r| r.as_rpm() == 0.0).unwrap_or(false)
-        }).count();
+        let dead_fans = miner
+            .fans
+            .iter()
+            .filter(|f| f.rpm.map(|r| r.as_rpm() == 0.0).unwrap_or(false))
+            .count();
         if dead_fans > 0 {
             issues.push(HealthIssue {
                 severity: HealthStatus::Critical,
@@ -253,7 +249,11 @@ impl HealthReport {
         }
 
         // Board issues
-        let dead_boards = miner.hashboards.iter().filter(|b| b.working_chips == Some(0) || b.working_chips.is_none()).count();
+        let dead_boards = miner
+            .hashboards
+            .iter()
+            .filter(|b| b.working_chips == Some(0) || b.working_chips.is_none())
+            .count();
         if dead_boards > 0 {
             issues.push(HealthIssue {
                 severity: HealthStatus::Critical,

@@ -1,7 +1,6 @@
 use crate::errors::{FetchError, FetchResult};
-use asic_rs::{data::miner::MinerData, MinerFactory};
+use asic_rs::{MinerFactory, data::miner::MinerData};
 use std::net::IpAddr;
-use tokio::runtime::Handle;
 
 /// Async version for use in async contexts.
 ///

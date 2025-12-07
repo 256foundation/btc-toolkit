@@ -1,5 +1,5 @@
-pub mod scanner;
 pub mod full_fetch;
+pub mod scanner;
 
 use crate::errors::ScannerError;
 use asic_rs::miners::factory::MinerFactory;
@@ -24,14 +24,14 @@ pub fn create_miner_factory(network_range: &str) -> Result<MinerFactory, Scanner
 
     if network_range.contains('/') {
         // CIDR notation
-        MinerFactory::new()
-            .with_subnet(network_range)
-            .map_err(|e| ScannerError::NetworkRangeInvalid(format!("Invalid CIDR '{network_range}': {e}")))
+        MinerFactory::new().with_subnet(network_range).map_err(|e| {
+            ScannerError::NetworkRangeInvalid(format!("Invalid CIDR '{network_range}': {e}"))
+        })
     } else if network_range.contains('-') {
         // IP range notation
-        MinerFactory::new()
-            .with_range(network_range)
-            .map_err(|e| ScannerError::NetworkRangeInvalid(format!("Invalid range '{network_range}': {e}")))
+        MinerFactory::new().with_range(network_range).map_err(|e| {
+            ScannerError::NetworkRangeInvalid(format!("Invalid range '{network_range}': {e}"))
+        })
     } else {
         Err(ScannerError::NetworkRangeInvalid(format!(
             "Invalid format '{}'. Use CIDR (192.168.1.0/24) or range (192.168.1.1-100)",

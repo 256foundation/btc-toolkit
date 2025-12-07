@@ -275,18 +275,29 @@ impl MainView {
         let subtitle = theme::typography::small("Bitcoin ASIC Miner Control Center");
 
         let scan_button = if self.is_scanning {
-            danger_button("Stop Scan", Some(theme::icons::stop().into()), Some(MainViewMessage::StopScan))
+            danger_button(
+                "Stop Scan",
+                Some(theme::icons::stop().into()),
+                Some(MainViewMessage::StopScan),
+            )
         } else {
             let enabled_groups = self.app_config.get_enabled_groups();
             if enabled_groups.is_empty() {
                 secondary_button("No Groups Enabled", None, None)
             } else {
-                primary_button("Start Scan", Some(theme::icons::play().into()), Some(MainViewMessage::StartScan))
+                primary_button(
+                    "Start Scan",
+                    Some(theme::icons::play().into()),
+                    Some(MainViewMessage::StartScan),
+                )
             }
         };
 
-        let add_group_button =
-            secondary_button("Add Group", Some(theme::icons::add().into()), Some(MainViewMessage::AddGroup));
+        let add_group_button = secondary_button(
+            "Add Group",
+            Some(theme::icons::add().into()),
+            Some(MainViewMessage::AddGroup),
+        );
 
         let config_button = secondary_button(
             "Configure",
@@ -297,7 +308,7 @@ impl MainView {
         container(
             row![
                 column![title, subtitle].spacing(theme::spacing::XS),
-                Space::new(Length::Fill, Length::Fixed(0.0)),
+                Space::new().width(Length::Fill),
                 row![scan_button, add_group_button, config_button].spacing(theme::spacing::SM)
             ]
             .align_y(iced::alignment::Vertical::Center),
@@ -365,7 +376,7 @@ impl MainView {
                 column![
                     row![
                         theme::typography::body(progress_text),
-                        Space::new(Length::Fill, Length::Fixed(0.0)),
+                        Space::new().width(Length::Fill),
                         theme::typography::body(status_text)
                     ],
                     progress_bar(0.0..=1.0, progress_value)
@@ -376,7 +387,7 @@ impl MainView {
             .padding(theme::padding::MD)
             .width(Length::Fill)
         } else {
-            container(Space::new(Length::Fixed(0.0), Length::Fixed(0.0)))
+            container(Space::new())
         };
 
         column![
@@ -482,7 +493,7 @@ impl MainView {
         if self.app_config.scan_groups.is_empty() {
             return column![
                 header,
-                Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::MD)),
+                Space::new().height(Length::Fixed(theme::spacing::MD)),
                 container(
                     column![
                         theme::typography::body("No scan groups configured"),
@@ -542,7 +553,7 @@ impl MainView {
                 column![
                     row![
                         theme::typography::body(&group.name),
-                        Space::new(Length::Fill, Length::Fixed(0.0)),
+                        Space::new().width(Length::Fill),
                         status_badge
                     ]
                     .align_y(iced::alignment::Vertical::Center)
@@ -562,7 +573,7 @@ impl MainView {
 
         column![
             header,
-            Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::SM)),
+            Space::new().height(Length::Fixed(theme::spacing::SM)),
             scrollable(groups_list)
         ]
         .spacing(theme::spacing::XS)
@@ -601,7 +612,7 @@ impl MainView {
                 theme::typography::small(format!("Across {} groups", all_results.len()))
             ]
             .spacing(theme::spacing::XS),
-            Space::new(Length::Fill, Length::Fixed(0.0))
+            Space::new().width(Length::Fill)
         ])
         .style(theme::containers::card)
         .padding(theme::padding::MD)
@@ -714,7 +725,7 @@ impl MainView {
                 )
                 .style(theme::containers::card)
                 .padding(theme::padding::SM)
-                .width(Length::Fill)
+                .width(Length::Fill),
             )
             .style(button::text)
             .padding(0)

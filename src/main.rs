@@ -14,9 +14,9 @@ use crate::device_detail_view::{DeviceDetailMessage, DeviceDetailView};
 use crate::main_view::{MainView, MainViewMessage};
 use crate::network::scanner::{Scanner, ScannerMessage};
 use crate::network_config::{NetworkConfig, NetworkConfigMessage};
-use std::net::IpAddr;
-use iced::{Element, Size, Subscription, Task, window};
+use iced::{Element, Size, Subscription, Task, Theme, window};
 use mimalloc::MiMalloc;
+use std::net::IpAddr;
 
 // http://github.com/microsoft/mimalloc
 // https://github.com/purpleprotocol/mimalloc_rust
@@ -29,7 +29,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 /// manages its own tokio runtime internally. Using #[tokio::main] would create
 /// a nested runtime situation that causes panics during shutdown.
 fn main() -> iced::Result {
-    iced::application("BTC Toolkit", update, view)
+    iced::application(BtcToolkit::boot, update, view)
         .subscription(subscription)
         .window(window::Settings {
             size: Size::new(1200.0, 800.0),
@@ -37,8 +37,9 @@ fn main() -> iced::Result {
             min_size: Some(Size::new(1000.0, 650.0)),
             ..window::Settings::default()
         })
-        .theme(|_| theme::theme())
-        .run_with(|| (BtcToolkit::new(), Task::none()))
+        .theme(BtcToolkit::theme)
+        .title("BTC Toolkit")
+        .run()
 }
 
 #[derive(Debug, Clone)]
@@ -58,7 +59,7 @@ struct BtcToolkit {
 }
 
 impl BtcToolkit {
-    fn new() -> Self {
+    fn boot() -> (Self, Task<BtcToolkitMessage>) {
         let app_config = AppConfig::load();
         let mut network_config = NetworkConfig::new();
         network_config.set_app_config(app_config.clone());
@@ -66,14 +67,21 @@ impl BtcToolkit {
         let mut main_view = MainView::new();
         main_view.set_app_config(app_config.clone());
 
-        Self {
-            current_page: Page::Main,
-            main_view,
-            network_config,
-            device_detail_view: None,
-            active_scan: None,
-            app_config,
-        }
+        (
+            Self {
+                current_page: Page::Main,
+                main_view,
+                network_config,
+                device_detail_view: None,
+                active_scan: None,
+                app_config,
+            },
+            Task::none(),
+        )
+    }
+
+    fn theme(&self) -> Theme {
+        theme::theme()
     }
 
     fn save_config(&self) {
@@ -111,7 +119,7 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
                     network::full_fetch::fetch_full_miner_data_async(IpAddr::V4(ip)),
                     |result| {
                         BtcToolkitMessage::DeviceDetail(DeviceDetailMessage::DataFetched(result))
-                    }
+                    },
                 )
             }
 

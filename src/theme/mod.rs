@@ -10,8 +10,9 @@ pub fn industrial_theme() -> Theme {
             text: colors::TEXT_PRIMARY,
             primary: colors::PRIMARY,
             success: colors::SUCCESS,
+            warning: colors::WARNING,
             danger: colors::DANGER,
-        }
+        },
     )
 }
 
@@ -21,8 +22,8 @@ pub(crate) fn theme() -> Theme {
 }
 
 pub mod colors;
-pub mod icons;
 pub mod containers;
+pub mod icons;
 pub mod padding;
 pub mod spacing;
 pub mod typography;

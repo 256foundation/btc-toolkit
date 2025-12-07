@@ -2,112 +2,79 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Context7 Usage
 
-BTC Toolkit is a Rust GUI application for managing Bitcoin ASIC mining farms, built with the Iced framework. It provides real-time network scanning, miner discovery, and farm management capabilities.
+Always use Context7 MCP tools (`resolve-library-id` then `get-library-docs`) when you need code generation, setup/configuration steps, or library/API documentation. Do this automatically without being asked.
 
-## Development Commands
+## Build Commands
 
 ```bash
-# Quick compilation check
-cargo check
-
-# Run the application (with backtrace for debugging)
-RUST_BACKTRACE=1 cargo run
-# Or use the Makefile:
-make run
-
-# Build optimized release
-cargo build --release
-
-# Cross-platform builds
-make build-linux    # x86_64-unknown-linux-gnu
-make build-windows  # x86_64-pc-windows-gnu (requires gcc-mingw-w64)
-
-# Install locally
-cargo install --path .
-
-# Format code
-cargo fmt
-
-# Run linter
-cargo clippy
-
-# Clean build artifacts
-cargo clean
-# Or:
-make clean
+cargo run              # Run in debug mode
+cargo build --release  # Build optimized release binary
+cargo check            # Fast compilation check
+cargo test             # Run tests
+cargo clippy           # Lint
 ```
 
-## Architecture Overview
+Cross-compilation (requires appropriate toolchains):
 
-### Message-Driven State Management
+```bash
+cargo build --release --target x86_64-unknown-linux-gnu    # Linux
+cargo build --release --target x86_64-pc-windows-gnu       # Windows (needs gcc-mingw-w64 when cross compiling from linux)
+```
 
-The application uses Iced's message-driven architecture with a **hierarchical state management pattern**:
+## Architecture
 
-- `BtcToolkit` in `main.rs` acts as the central coordinator, routing messages between components
-- Each UI component (Dashboard, NetworkConfig, ScanningView) manages local state but shares a central `AppConfig`
-- Cross-component navigation and state changes flow through the main coordinator
+**BTC Toolkit** is a desktop GUI for managing Bitcoin ASIC mining farms, built with iced.rs (Elm architecture) and asic-rs for miner communication.
 
-Key pattern: Components don't directly change application state - they send messages that bubble up to the coordinator, which then triggers cascading updates across affected components.
+### Core Pattern: Elm Architecture
 
-### Dual-Runtime Scanner Architecture
+The app uses iced's message-passing architecture:
 
-The network scanner implements a sophisticated **dual-runtime pattern** to integrate async network operations with Iced's immediate-mode GUI:
+- **State** (`BtcToolkit` in main.rs) - Application data
+- **Messages** (`BtcToolkitMessage`) - Events that modify state
+- **Update** (`update()`) - Processes messages, returns `Task<Message>`
+- **View** (`view()`) - Renders state as widgets
 
-1. **Iced Runtime**: Manages UI events and subscriptions
-2. **Tokio Runtime**: Created in separate threads for network scanning
-3. **Channel Bridge**: `tokio::sync::mpsc::unbounded_channel` connects the runtimes
+### Module Structure
 
-Scanner messages flow through Iced's subscription system (`Scanner::scan_multiple_groups()`) enabling real-time streaming of miner discoveries to the UI.
+- `main.rs` - App bootstrap, page routing, message dispatch
+- `main_view.rs` - Dashboard with miner list and scan controls
+- `device_detail_view.rs` - Individual miner detail page
+- `network_config.rs` - Scan group configuration UI
+- `network/scanner.rs` - Async network scanner using iced subscriptions
+- `network/full_fetch.rs` - Full miner data fetcher
+- `config.rs` - JSON config persistence (`btc_toolkit_config.json`)
+- `health.rs` - Miner health assessment (chips, hashrate, temp, fans)
+- `theme/` - Design system (colors, typography, icons, containers)
 
-### Configuration State Synchronization
+### Key Dependencies
 
-The system maintains two distinct state layers:
+- **iced 0.14** - GUI framework with `svg` and `tokio` features
+- **asic-rs** - Miner communication (supports Bitmain, MicroBT, Canaan, BitAxe, etc.)
+- **mimalloc** - High-performance allocator
 
-- **Persistent State** (`AppConfig`): Serialized to `btc_toolkit_config.json`, shared immutably across components
-- **Transient UI State**: Component-specific editing state, progress indicators, UI toggles
+### Async Pattern
 
-Complex pattern in `NetworkConfig`: Maintains shadow editing state (`editing_group: Option<EditingGroup>`) that doesn't affect main config until explicitly saved, enabling cancel functionality.
+The app runs on iced's internal tokio runtime (via `tokio` feature). Do NOT use `#[tokio::main]` - this causes nested runtime panics. Use:
 
-### Streaming Scanner Integration
+- `Task::perform()` for one-shot async operations
+- `Subscription::run_with()` for ongoing streams (like network scanning)
 
-The most architecturally complex interaction is the "Scanning Session" lifecycle:
+### Subscription Pattern (iced 0.14)
 
-1. **Initiation**: Dashboard → Main coordinator → Creates ScanningView + sets `active_scan` state
-2. **Execution**: Subscription system → Scanner → Real-time `ScannerMessage`s → ScanningView updates
-3. **Completion**: ScanningView → Main coordinator → Merges results into `AppConfig` → Dashboard refresh → Disk persistence
+For subscriptions with data, use boxed streams:
 
-### Network Module Utilities
+```rust
+fn my_subscription(data: MyData) -> Subscription<Message> {
+    Subscription::run_with(data, |data| {
+        stream::channel(100, |output| async move { ... }).boxed()
+    })
+}
+```
 
-Shared utilities in `src/network/mod.rs` eliminate code duplication:
+Data types must implement `Hash` - use JSON serialization for complex types.
 
-- `create_miner_factory(network_range)` - Basic factory from network range
-- `create_configured_miner_factory(network_range, config)` - Factory with filters applied
-- `estimate_ip_count(network_range)` - IP count estimation
+## Code Style
 
-## Key Dependencies
-
-- **Iced v0.13** - Cross-platform GUI framework with reactive architecture
-- **asic-rs** - ASIC miner communication library (git dependency from 256-Foundation)
-- **Tokio v1.47** - Async runtime with full multi-threading features
-- **MiMalloc** - High-performance secure memory allocator
-- **Serde** - JSON serialization for configuration persistence
-
-## Configuration Management
-
-Application state persists to `btc_toolkit_config.json` containing:
-
-- Scan groups with network ranges (CIDR or IP range notation)
-- Miner filtering configuration (manufacturer and firmware filters)
-- Last scan results and group enable/disable states
-
-The config uses automatic fallback creation if the file doesn't exist or fails to load.
-
-## Build Optimizations
-
-Release builds are optimized for performance (see `Cargo.toml`):
-
-- LTO (Link Time Optimization) enabled
-- Symbol stripping for smaller binaries
-- Single codegen unit for maximum optimization
+Write concise, pragmatic, maintainable, idiomatic, modern, type-safe, secure, performant, and production-ready Rust code.

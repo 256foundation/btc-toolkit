@@ -1,9 +1,8 @@
+use iced::Length;
+use iced::widget::Svg;
 /// Icon system using embedded Heroicons SVG files
 /// All icons are embedded at compile-time for zero runtime cost
-
 use iced::widget::svg;
-use iced::widget::Svg;
-use iced::Length;
 
 // Embedded SVG icon data
 pub const ARROW_LEFT: &[u8] = include_bytes!("../../assets/icons/arrow-left.svg");
@@ -19,40 +18,40 @@ pub const NETWORK: &[u8] = include_bytes!("../../assets/icons/network.svg");
 pub const QUESTION_MARK: &[u8] = include_bytes!("../../assets/icons/question-mark-circle.svg");
 
 /// Standard icon size for buttons and UI elements
-pub const ICON_SIZE: u16 = 20;
+pub const ICON_SIZE: f32 = 20.0;
 
 /// Small icon size for compact displays
-pub const ICON_SIZE_SM: u16 = 16;
+pub const ICON_SIZE_SM: f32 = 16.0;
 
 /// Large icon size for headers and prominent elements
-pub const ICON_SIZE_LG: u16 = 24;
+pub const ICON_SIZE_LG: f32 = 24.0;
 
 /// Create an SVG icon widget with standard size
 pub fn icon(data: &'static [u8]) -> Svg<'static> {
     svg(svg::Handle::from_memory(data))
-        .width(Length::Fixed(ICON_SIZE as f32))
-        .height(Length::Fixed(ICON_SIZE as f32))
+        .width(Length::Fixed(ICON_SIZE))
+        .height(Length::Fixed(ICON_SIZE))
 }
 
 /// Create an SVG icon widget with small size
 pub fn icon_sm(data: &'static [u8]) -> Svg<'static> {
     svg(svg::Handle::from_memory(data))
-        .width(Length::Fixed(ICON_SIZE_SM as f32))
-        .height(Length::Fixed(ICON_SIZE_SM as f32))
+        .width(Length::Fixed(ICON_SIZE_SM))
+        .height(Length::Fixed(ICON_SIZE_SM))
 }
 
 /// Create an SVG icon widget with large size
 pub fn icon_lg(data: &'static [u8]) -> Svg<'static> {
     svg(svg::Handle::from_memory(data))
-        .width(Length::Fixed(ICON_SIZE_LG as f32))
-        .height(Length::Fixed(ICON_SIZE_LG as f32))
+        .width(Length::Fixed(ICON_SIZE_LG))
+        .height(Length::Fixed(ICON_SIZE_LG))
 }
 
 /// Create an SVG icon widget with custom size
-pub fn icon_size(data: &'static [u8], size: u16) -> Svg<'static> {
+pub fn icon_size(data: &'static [u8], size: f32) -> Svg<'static> {
     svg(svg::Handle::from_memory(data))
-        .width(Length::Fixed(size as f32))
-        .height(Length::Fixed(size as f32))
+        .width(Length::Fixed(size))
+        .height(Length::Fixed(size))
 }
 
 // Convenience functions for common icons

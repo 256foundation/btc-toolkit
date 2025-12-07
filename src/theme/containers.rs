@@ -1,6 +1,6 @@
+use super::colors;
 use iced::widget::container;
 use iced::{Background, Border, Color, Shadow, Theme, Vector};
-use super::colors;
 
 /// Card style - elevated surface for content sections
 pub fn card(_theme: &Theme) -> container::Style {
@@ -17,6 +17,7 @@ pub fn card(_theme: &Theme) -> container::Style {
             blur_radius: 8.0,
         },
         text_color: Some(colors::TEXT_PRIMARY),
+        ..Default::default()
     }
 }
 
@@ -35,6 +36,7 @@ pub fn header(_theme: &Theme) -> container::Style {
             blur_radius: 6.0,
         },
         text_color: Some(colors::TEXT_PRIMARY),
+        ..Default::default()
     }
 }
 
@@ -53,6 +55,7 @@ pub fn success(_theme: &Theme) -> container::Style {
             blur_radius: 8.0,
         },
         text_color: Some(colors::TEXT_PRIMARY),
+        ..Default::default()
     }
 }
 
@@ -71,6 +74,7 @@ pub fn error(_theme: &Theme) -> container::Style {
             blur_radius: 8.0,
         },
         text_color: Some(colors::TEXT_PRIMARY),
+        ..Default::default()
     }
 }
 
@@ -89,6 +93,7 @@ pub fn warning(_theme: &Theme) -> container::Style {
             blur_radius: 8.0,
         },
         text_color: Some(colors::TEXT_PRIMARY),
+        ..Default::default()
     }
 }
 
@@ -107,6 +112,7 @@ pub fn primary(_theme: &Theme) -> container::Style {
             blur_radius: 10.0,
         },
         text_color: Some(colors::TEXT_ON_PRIMARY),
+        ..Default::default()
     }
 }
 
@@ -125,6 +131,7 @@ pub fn accent(_theme: &Theme) -> container::Style {
             blur_radius: 10.0,
         },
         text_color: Some(colors::TEXT_ON_PRIMARY),
+        ..Default::default()
     }
 }
 
@@ -135,6 +142,7 @@ pub fn transparent(_theme: &Theme) -> container::Style {
         border: Border::default(),
         shadow: Shadow::default(),
         text_color: Some(colors::TEXT_PRIMARY),
+        ..Default::default()
     }
 }
 
@@ -149,6 +157,7 @@ pub fn badge(_theme: &Theme) -> container::Style {
         },
         shadow: Shadow::default(),
         text_color: Some(colors::TEXT_PRIMARY),
+        ..Default::default()
     }
 }
 
@@ -167,5 +176,6 @@ pub fn tooltip(_theme: &Theme) -> container::Style {
             blur_radius: 12.0,
         },
         text_color: Some(colors::TEXT_PRIMARY),
+        ..Default::default()
     }
 }

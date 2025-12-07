@@ -187,7 +187,7 @@ impl NetworkConfig {
                     theme::typography::small("Configure scan groups for ASIC miner discovery")
                 ]
                 .spacing(theme::spacing::XS),
-                Space::new(Length::Fill, Length::Fixed(0.0)),
+                Space::new().width(Length::Fill),
                 button(
                     row![
                         theme::icons::icon_sm(theme::icons::ADD),
@@ -213,7 +213,7 @@ impl NetworkConfig {
                     theme::typography::body(
                         "Create your first scan group to start discovering miners"
                     ),
-                    Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::MD)),
+                    Space::new().height(Length::Fixed(theme::spacing::MD)),
                     button(
                         row![
                             theme::icons::icon_sm(theme::icons::ADD),
@@ -238,7 +238,7 @@ impl NetworkConfig {
             let mut groups_list = column![].spacing(theme::spacing::MD);
 
             for group in &self.app_config.scan_groups {
-                let enabled_checkbox = checkbox("", group.enabled).on_toggle(move |enabled| {
+                let enabled_checkbox = checkbox(group.enabled).on_toggle(move |enabled| {
                     NetworkConfigMessage::ToggleGroupEnabled(group.name.clone(), enabled)
                 });
 
@@ -250,7 +250,7 @@ impl NetworkConfig {
                         column![
                             row![
                                 theme::typography::heading(&group.name),
-                                Space::new(Length::Fill, Length::Fixed(0.0)),
+                                Space::new().width(Length::Fill),
                                 container(theme::typography::small(if group.enabled {
                                     "ENABLED"
                                 } else {
@@ -318,7 +318,7 @@ impl NetworkConfig {
                 .style(button::secondary)
                 .padding(theme::padding::SM)
                 .on_press(NetworkConfigMessage::Close),
-                Space::new(Length::Fill, Length::Fixed(0.0)),
+                Space::new().width(Length::Fill),
                 button(
                     row![
                         theme::typography::body("Save Configuration")
@@ -364,7 +364,7 @@ impl NetworkConfig {
                 })
             ]
             .spacing(theme::spacing::XS),
-            Space::new(Length::Fill, Length::Fixed(0.0))
+            Space::new().width(Length::Fill)
         ])
         .style(theme::containers::header)
         .padding(theme::padding::MD)
@@ -397,7 +397,7 @@ impl NetworkConfig {
                     ]
                     .spacing(theme::spacing::MD)
                     .align_y(iced::alignment::Vertical::Center),
-                    Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::MD)),
+                    Space::new().height(Length::Fixed(theme::spacing::MD)),
                     theme::typography::small(
                         "Supports CIDR notation (192.168.1.0/24) or IP ranges (192.168.1.1-100)"
                     )
@@ -407,7 +407,8 @@ impl NetworkConfig {
                 .width(Length::Fill),
                 container(
                     row![
-                        checkbox("Enable this group for scanning", editing.enabled)
+                        checkbox(editing.enabled)
+                            .label("Enable this group for scanning")
                             .on_toggle(NetworkConfigMessage::SetGroupEnabled)
                     ]
                     .spacing(theme::spacing::MD),
@@ -426,48 +427,59 @@ impl NetworkConfig {
             column![
                 theme::typography::heading("Miner Filters"),
                 theme::typography::small("Configure which types of miners to discover (leave all unchecked to find all types)"),
-                Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::SM)),
+                Space::new().height(Length::Fixed(theme::spacing::SM)),
 
                 container(
                     row![
                         container(
                             column![
                                 theme::typography::body("Miner Manufacturers:"),
-                                Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::SM)),
+                                Space::new().height(Length::Fixed(theme::spacing::SM)),
 
-                                checkbox("AntMiner (Bitmain)", self.search_makes.contains(&MinerMake::AntMiner))
+                                checkbox(self.search_makes.contains(&MinerMake::AntMiner))
+                                    .label("AntMiner (Bitmain)")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::AntMiner, value)),
-                                checkbox("WhatsMiner (MicroBT)", self.search_makes.contains(&MinerMake::WhatsMiner))
+                                checkbox(self.search_makes.contains(&MinerMake::WhatsMiner))
+                                    .label("WhatsMiner (MicroBT)")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::WhatsMiner, value)),
-                                checkbox("AvalonMiner (Canaan)", self.search_makes.contains(&MinerMake::AvalonMiner))
+                                checkbox(self.search_makes.contains(&MinerMake::AvalonMiner))
+                                    .label("AvalonMiner (Canaan)")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::AvalonMiner, value)),
-                                checkbox("BitAxe", self.search_makes.contains(&MinerMake::Bitaxe))
+                                checkbox(self.search_makes.contains(&MinerMake::Bitaxe))
+                                    .label("BitAxe")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::Bitaxe, value)),
-                                checkbox("ePIC", self.search_makes.contains(&MinerMake::EPic))
+                                checkbox(self.search_makes.contains(&MinerMake::EPic))
+                                    .label("ePIC")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::EPic, value)),
-                                checkbox("Braiins", self.search_makes.contains(&MinerMake::Braiins))
+                                checkbox(self.search_makes.contains(&MinerMake::Braiins))
+                                    .label("Braiins")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleMake(MinerMake::Braiins, value)),
                             ]
                             .spacing(theme::spacing::SM)
                         )
                         .width(Length::FillPortion(1)),
 
-                        Space::new(Length::Fixed(theme::spacing::MD), Length::Fixed(0.0)),
+                        Space::new().width(Length::Fixed(theme::spacing::MD)),
 
                         container(
                             column![
                                 theme::typography::body("Firmware Types:"),
-                                Space::new(Length::Fixed(0.0), Length::Fixed(theme::spacing::SM)),
+                                Space::new().height(Length::Fixed(theme::spacing::SM)),
 
-                                checkbox("Braiins OS", self.search_firmwares.contains(&MinerFirmware::BraiinsOS))
+                                checkbox(self.search_firmwares.contains(&MinerFirmware::BraiinsOS))
+                                    .label("Braiins OS")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleFirmware(MinerFirmware::BraiinsOS, value)),
-                                checkbox("ePIC UMC", self.search_firmwares.contains(&MinerFirmware::EPic))
+                                checkbox(self.search_firmwares.contains(&MinerFirmware::EPic))
+                                    .label("ePIC UMC")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleFirmware(MinerFirmware::EPic, value)),
-                                checkbox("Luxor OS", self.search_firmwares.contains(&MinerFirmware::LuxOS))
+                                checkbox(self.search_firmwares.contains(&MinerFirmware::LuxOS))
+                                    .label("Luxor OS")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleFirmware(MinerFirmware::LuxOS, value)),
-                                checkbox("VNish", self.search_firmwares.contains(&MinerFirmware::VNish))
+                                checkbox(self.search_firmwares.contains(&MinerFirmware::VNish))
+                                    .label("VNish")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleFirmware(MinerFirmware::VNish, value)),
-                                checkbox("Mara FW", self.search_firmwares.contains(&MinerFirmware::Marathon))
+                                checkbox(self.search_firmwares.contains(&MinerFirmware::Marathon))
+                                    .label("Mara FW")
                                     .on_toggle(|value| NetworkConfigMessage::ToggleFirmware(MinerFirmware::Marathon, value)),
                             ]
                         .spacing(theme::spacing::SM)
@@ -500,7 +512,7 @@ impl NetworkConfig {
                 .style(button::secondary)
                 .padding(theme::padding::SM)
                 .on_press(NetworkConfigMessage::CancelGroupEdit),
-                Space::new(Length::Fill, Length::Fixed(0.0)),
+                Space::new().width(Length::Fill),
                 button(
                     row![
                         theme::typography::body(if is_editing {
