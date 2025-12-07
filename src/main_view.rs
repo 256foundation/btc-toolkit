@@ -8,7 +8,7 @@ use crate::ui_helpers::{
 use asic_rs::data::miner::MinerData;
 use iced::widget::{Space, button, column, container, progress_bar, row, scrollable};
 use iced::{Element, Length, Task};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::Ipv4Addr;
 use std::time::Instant;
 
@@ -36,6 +36,7 @@ pub enum MainViewMessage {
     },
     AllScansCompleted,
     SortColumn(SortColumn),
+    ToggleGroupCollapse(String),
 }
 
 #[derive(Debug, Clone)]
@@ -59,6 +60,7 @@ pub struct MainView {
     error_messages: Vec<String>,
     sort_column: Option<SortColumn>,
     sort_direction: SortDirection,
+    collapsed_groups: HashSet<String>,
 }
 
 impl MainView {
@@ -76,6 +78,7 @@ impl MainView {
             error_messages: Vec::new(),
             sort_column: Some(SortColumn::IpAddress),
             sort_direction: SortDirection::Ascending,
+            collapsed_groups: HashSet::new(),
         }
     }
 
@@ -252,6 +255,14 @@ impl MainView {
                 }
                 Task::none()
             }
+            MainViewMessage::ToggleGroupCollapse(group_name) => {
+                if self.collapsed_groups.contains(&group_name) {
+                    self.collapsed_groups.remove(&group_name);
+                } else {
+                    self.collapsed_groups.insert(group_name);
+                }
+                Task::none()
+            }
         }
     }
 
@@ -260,10 +271,19 @@ impl MainView {
         let stats = self.view_stats();
         let main_content = self.view_main_content();
 
+        // Compact header: stats on left, controls on right
+        let header = container(
+            row![stats, Space::new().width(Length::Fill), toolbar]
+                .align_y(iced::alignment::Vertical::Center),
+        )
+        .style(theme::containers::header)
+        .padding(theme::padding::SM)
+        .width(Length::Fill);
+
         container(
-            column![toolbar, stats, main_content]
-                .spacing(theme::spacing::MD)
-                .padding(theme::padding::MD),
+            column![header, main_content]
+                .spacing(theme::spacing::SM)
+                .padding(theme::padding::SM),
         )
         .width(Length::Fill)
         .height(Length::Fill)
@@ -271,52 +291,34 @@ impl MainView {
     }
 
     fn view_toolbar(&self) -> Element<'_, MainViewMessage> {
-        let title = theme::typography::title("BTC Farm Management");
-        let subtitle = theme::typography::small("Bitcoin ASIC Miner Control Center");
-
         let scan_button = if self.is_scanning {
             danger_button(
-                "Stop Scan",
+                "Stop",
                 Some(theme::icons::stop().into()),
                 Some(MainViewMessage::StopScan),
             )
         } else {
             let enabled_groups = self.app_config.get_enabled_groups();
             if enabled_groups.is_empty() {
-                secondary_button("No Groups Enabled", None, None)
+                secondary_button("No Groups", None, None)
             } else {
                 primary_button(
-                    "Start Scan",
+                    "Scan",
                     Some(theme::icons::play().into()),
                     Some(MainViewMessage::StartScan),
                 )
             }
         };
 
-        let add_group_button = secondary_button(
-            "Add Group",
-            Some(theme::icons::add().into()),
-            Some(MainViewMessage::AddGroup),
-        );
-
         let config_button = secondary_button(
-            "Configure",
+            "Config",
             Some(theme::icons::settings().into()),
             Some(MainViewMessage::OpenNetworkConfig),
         );
 
-        container(
-            row![
-                column![title, subtitle].spacing(theme::spacing::XS),
-                Space::new().width(Length::Fill),
-                row![scan_button, add_group_button, config_button].spacing(theme::spacing::SM)
-            ]
-            .align_y(iced::alignment::Vertical::Center),
-        )
-        .style(theme::containers::header)
-        .padding(theme::padding::MD)
-        .width(Length::Fill)
-        .into()
+        row![scan_button, config_button]
+            .spacing(theme::spacing::SM)
+            .into()
     }
 
     fn view_stats(&self) -> Element<'_, MainViewMessage> {
@@ -333,8 +335,8 @@ impl MainView {
             .map(|group| estimate_ip_count(&group.network_range))
             .sum();
 
-        let progress = if self.is_scanning && self.total_groups > 0 {
-            // Aggregate progress across all groups
+        // Compact inline stats bar
+        let stats_row = if self.is_scanning {
             let (total_ips_all_groups, scanned_ips_all_groups) =
                 self.group_status
                     .values()
@@ -351,252 +353,58 @@ impl MainView {
                 calculate_progress(self.completed_groups, self.total_groups)
             };
 
-            let progress_text = if total_ips_all_groups > 0 {
-                format!(
-                    "Scanning {} IPs across {} groups",
-                    total_ips_all_groups, self.total_groups
-                )
-            } else {
-                format!("Scanning {} groups", self.total_groups)
-            };
+            let elapsed =
+                format_duration(self.start_time.map(|t| t.elapsed().as_secs()).unwrap_or(0));
 
-            let status_text = if total_ips_all_groups > 0 {
-                format!(
-                    "{}/{} IPs scanned",
+            row![
+                theme::typography::small(format!("{} miners found", total_miners)),
+                Space::new().width(theme::spacing::MD),
+                theme::typography::small(format!(
+                    "{}/{} IPs",
                     scanned_ips_all_groups, total_ips_all_groups
-                )
-            } else {
-                format!(
-                    "{}/{} groups completed",
-                    self.completed_groups, self.total_groups
-                )
-            };
-
-            container(
-                column![
-                    row![
-                        theme::typography::body(progress_text),
-                        Space::new().width(Length::Fill),
-                        theme::typography::body(status_text)
-                    ],
-                    progress_bar(0.0..=1.0, progress_value)
-                ]
-                .spacing(theme::spacing::XS),
-            )
-            .style(theme::containers::warning)
-            .padding(theme::padding::MD)
-            .width(Length::Fill)
+                )),
+                Space::new().width(theme::spacing::SM),
+                container(progress_bar(0.0..=1.0, progress_value)).width(Length::Fixed(120.0)),
+                Space::new().width(theme::spacing::SM),
+                theme::typography::tiny(elapsed),
+            ]
+            .align_y(iced::alignment::Vertical::Center)
         } else {
-            container(Space::new())
+            row![
+                theme::typography::small(format!(
+                    "{} groups ({} enabled)",
+                    self.app_config.scan_groups.len(),
+                    enabled_groups.len()
+                )),
+                Space::new().width(theme::spacing::MD),
+                theme::typography::small(format!("~{} IPs", total_ips)),
+                Space::new().width(theme::spacing::MD),
+                theme::typography::small(format!("{} miners", total_miners)),
+            ]
+            .align_y(iced::alignment::Vertical::Center)
         };
 
-        column![
-            row![
-                container(
-                    column![
-                        theme::typography::mono_large(
-                            self.app_config.scan_groups.len().to_string()
-                        ),
-                        theme::typography::small("Total Groups"),
-                        theme::typography::tiny(format!("{} enabled", enabled_groups.len()))
-                    ]
-                    .align_x(iced::alignment::Horizontal::Center)
-                    .spacing(theme::spacing::XS)
-                )
-                .style(theme::containers::card)
-                .padding(theme::padding::MD)
-                .width(Length::FillPortion(1)),
-                container(
-                    column![
-                        theme::typography::mono_large(format!("~{}", total_ips)),
-                        theme::typography::small("IP Addresses"),
-                        theme::typography::tiny("to scan")
-                    ]
-                    .align_x(iced::alignment::Horizontal::Center)
-                    .spacing(theme::spacing::XS)
-                )
-                .style(theme::containers::card)
-                .padding(theme::padding::MD)
-                .width(Length::FillPortion(1)),
-                container(
-                    column![
-                        theme::typography::mono_large(total_miners.to_string()),
-                        theme::typography::small("Miners Found"),
-                        theme::typography::tiny(if self.is_scanning {
-                            "current scan"
-                        } else {
-                            "last scan"
-                        })
-                    ]
-                    .align_x(iced::alignment::Horizontal::Center)
-                    .spacing(theme::spacing::XS)
-                )
-                .style(theme::containers::card)
-                .padding(theme::padding::MD)
-                .width(Length::FillPortion(1)),
-                container(
-                    column![
-                        theme::typography::mono_large(if self.is_scanning {
-                            "Scanning"
-                        } else {
-                            "Ready"
-                        }),
-                        theme::typography::small("Status"),
-                        theme::typography::tiny(if self.is_scanning {
-                            format_duration(
-                                self.start_time.map(|t| t.elapsed().as_secs()).unwrap_or(0),
-                            )
-                        } else {
-                            "idle".to_string()
-                        })
-                    ]
-                    .align_x(iced::alignment::Horizontal::Center)
-                    .spacing(theme::spacing::XS)
-                )
-                .style(if self.is_scanning {
-                    theme::containers::warning
-                } else {
-                    theme::containers::card
-                })
-                .padding(theme::padding::MD)
-                .width(Length::FillPortion(1))
-            ]
-            .spacing(theme::spacing::MD),
-            progress
-        ]
-        .spacing(theme::spacing::MD)
-        .into()
+        stats_row.into()
     }
 
     fn view_main_content(&self) -> Element<'_, MainViewMessage> {
-        let left_panel = container(self.view_groups_panel())
-            .style(theme::containers::card)
-            .padding(theme::padding::MD)
-            .width(Length::FillPortion(1))
-            .height(Length::Fill);
-
-        let right_panel = container(self.view_results_panel())
-            .style(theme::containers::card)
-            .padding(theme::padding::MD)
-            .width(Length::FillPortion(2))
-            .height(Length::Fill);
-
-        row![left_panel, right_panel]
-            .spacing(theme::spacing::MD)
-            .height(Length::Fill)
-            .into()
-    }
-
-    fn view_groups_panel(&self) -> Element<'_, MainViewMessage> {
-        let header = theme::typography::heading("Scan Groups");
-
-        if self.app_config.scan_groups.is_empty() {
-            return column![
-                header,
-                Space::new().height(Length::Fixed(theme::spacing::MD)),
-                container(
-                    column![
-                        theme::typography::body("No scan groups configured"),
-                        theme::typography::small(
-                            "Use 'Add Group' or 'Configure' to add network ranges"
-                        )
-                    ]
-                    .align_x(iced::alignment::Horizontal::Center)
-                    .spacing(theme::spacing::SM)
-                )
-                .padding(theme::padding::LG)
-            ]
-            .into();
-        }
-
-        let mut groups_list = column![].spacing(theme::spacing::SM);
-
-        for group in &self.app_config.scan_groups {
-            let estimated_ips = estimate_ip_count(&group.network_range);
-            let status = self.group_status.get(&group.name);
-
-            let status_badge = if let Some(status) = status {
-                if status.completed {
-                    if status.error.is_some() {
-                        container(theme::typography::small("ERROR"))
-                            .style(theme::containers::card)
-                            .padding([theme::padding::XS, theme::padding::SM])
-                    } else {
-                        container(theme::typography::small(format!(
-                            "{} miners",
-                            status.miner_count
-                        )))
-                        .style(theme::containers::success)
-                        .padding([theme::padding::XS, theme::padding::SM])
-                    }
-                } else {
-                    let progress_text = if status.total_ips > 0 {
-                        format!("{}/{} IPs", status.scanned_ips, status.total_ips)
-                    } else {
-                        "SCANNING".to_string()
-                    };
-                    container(theme::typography::small(progress_text))
-                        .style(theme::containers::warning)
-                        .padding([theme::padding::XS, theme::padding::SM])
-                }
-            } else if group.enabled {
-                container(theme::typography::small("ENABLED"))
-                    .style(theme::containers::success)
-                    .padding([theme::padding::XS, theme::padding::SM])
-            } else {
-                container(theme::typography::small("DISABLED"))
-                    .style(theme::containers::card)
-                    .padding([theme::padding::XS, theme::padding::SM])
-            };
-
-            let group_card = container(
-                column![
-                    row![
-                        theme::typography::body(&group.name),
-                        Space::new().width(Length::Fill),
-                        status_badge
-                    ]
-                    .align_y(iced::alignment::Vertical::Center)
-                    .spacing(theme::spacing::SM)
-                    .height(Length::Fixed(28.0)),
-                    theme::typography::mono(&group.network_range),
-                    theme::typography::tiny(format!("~{} IPs", estimated_ips))
-                ]
-                .spacing(theme::spacing::XS),
-            )
-            .style(theme::containers::card)
-            .padding(theme::padding::SM)
-            .width(Length::Fill);
-
-            groups_list = groups_list.push(group_card);
-        }
-
-        column![
-            header,
-            Space::new().height(Length::Fixed(theme::spacing::SM)),
-            scrollable(groups_list)
-        ]
-        .spacing(theme::spacing::XS)
-        .into()
-    }
-
-    fn view_results_panel(&self) -> Element<'_, MainViewMessage> {
-        let all_results = if self.is_scanning {
+        // Get results from current scan or last scan
+        let results = if self.is_scanning {
             &self.discovered_miners_by_group
         } else {
             self.app_config.get_all_scan_results()
         };
 
-        if all_results.is_empty() {
+        if self.app_config.scan_groups.is_empty() {
             return container(
                 column![
-                    theme::typography::body("No miners discovered yet"),
-                    theme::typography::small("Run a scan to find ASIC miners on your network")
+                    theme::typography::small("No groups configured"),
+                    theme::typography::tiny("Use Config to add network ranges")
                 ]
                 .align_x(iced::alignment::Horizontal::Center)
-                .spacing(theme::spacing::SM),
+                .spacing(theme::spacing::XS),
             )
-            .padding(theme::padding::LG)
+            .padding(theme::padding::MD)
             .width(Length::Fill)
             .height(Length::Fill)
             .center_x(Length::Fill)
@@ -604,139 +412,216 @@ impl MainView {
             .into();
         }
 
-        let total_miners: usize = all_results.values().map(|miners| miners.len()).sum();
+        let mut content = column![].spacing(theme::spacing::SM);
 
-        let header = container(row![
-            column![
-                theme::typography::heading(format!("{} Miners", total_miners)),
-                theme::typography::small(format!("Across {} groups", all_results.len()))
-            ]
-            .spacing(theme::spacing::XS),
-            Space::new().width(Length::Fill)
-        ])
-        .style(theme::containers::card)
-        .padding(theme::padding::MD)
-        .width(Length::Fill);
+        for group in &self.app_config.scan_groups {
+            let estimated_ips = estimate_ip_count(&group.network_range);
+            let status = self.group_status.get(&group.name);
+            let miners = results.get(&group.name);
+            let miner_count = miners.map(|m| m.len()).unwrap_or(0);
+            let is_collapsed = self.collapsed_groups.contains(&group.name);
 
-        let table_header = container(
-            row![
-                container(
-                    button(theme::typography::small("IP Address"))
-                        .style(button::text)
-                        .padding(0)
-                        .on_press(MainViewMessage::SortColumn(SortColumn::IpAddress))
-                )
-                .align_x(iced::alignment::Horizontal::Left)
-                .width(Length::FillPortion(3))
-                .padding(theme::padding::XS),
-                container(
-                    button(theme::typography::small("Model"))
-                        .style(button::text)
-                        .padding(0)
-                        .on_press(MainViewMessage::SortColumn(SortColumn::Model))
-                )
-                .align_x(iced::alignment::Horizontal::Left)
-                .width(Length::FillPortion(3))
-                .padding(theme::padding::XS),
-                container(
-                    button(theme::typography::small("Make"))
-                        .style(button::text)
-                        .padding(0)
-                        .on_press(MainViewMessage::SortColumn(SortColumn::Make))
-                )
-                .align_x(iced::alignment::Horizontal::Left)
-                .width(Length::FillPortion(2))
-                .padding(theme::padding::XS),
-                container(
-                    button(theme::typography::small("Firmware"))
-                        .style(button::text)
-                        .padding(0)
-                        .on_press(MainViewMessage::SortColumn(SortColumn::Firmware))
-                )
-                .align_x(iced::alignment::Horizontal::Left)
-                .width(Length::FillPortion(2))
-                .padding(theme::padding::XS),
-                container(
-                    button(theme::typography::small("Firmware Version"))
-                        .style(button::text)
-                        .padding(0)
-                        .on_press(MainViewMessage::SortColumn(SortColumn::FirmwareVersion))
-                )
-                .align_x(iced::alignment::Horizontal::Left)
-                .width(Length::FillPortion(2))
-                .padding(theme::padding::XS),
-            ]
-            .spacing(theme::spacing::SM),
-        )
-        .style(theme::containers::header)
-        .padding(theme::padding::SM)
-        .width(Length::Fill);
-
-        let mut all_miners: Vec<MinerData> = all_results.values().flatten().cloned().collect();
-
-        self.sort_miners(&mut all_miners);
-
-        let mut miners_list = column![]
-            .spacing(theme::spacing::XS)
-            .padding(theme::padding::SCROLLABLE);
-
-        for miner in all_miners {
-            let miner_ip = match miner.ip {
-                std::net::IpAddr::V4(ipv4) => ipv4,
-                std::net::IpAddr::V6(_) => continue,
+            // Group status text
+            let status_text = if let Some(status) = status {
+                if status.completed {
+                    if status.error.is_some() {
+                        "error".to_string()
+                    } else {
+                        format!("{} miners", status.miner_count)
+                    }
+                } else if status.total_ips > 0 {
+                    format!("scanning {}/{}", status.scanned_ips, status.total_ips)
+                } else {
+                    "scanning...".to_string()
+                }
+            } else if miner_count > 0 {
+                format!("{} miners", miner_count)
+            } else if group.enabled {
+                "ready".to_string()
+            } else {
+                "disabled".to_string()
             };
 
-            let miner_row = button(
+            // Collapse indicator
+            let collapse_icon = if is_collapsed { "▶" } else { "▼" };
+
+            // Group header (clickable)
+            let group_header = button(
                 container(
                     row![
-                        container(theme::typography::mono(miner_ip.to_string()))
-                            .align_x(iced::alignment::Horizontal::Left)
-                            .width(Length::FillPortion(3))
-                            .padding(theme::padding::XS),
-                        container(theme::typography::body(
-                            format!("{}", miner.device_info.model).replace("Plus", "+")
-                        ))
-                        .align_x(iced::alignment::Horizontal::Left)
-                        .width(Length::FillPortion(3))
-                        .padding(theme::padding::XS),
-                        container(theme::typography::body(format!(
-                            "{}",
-                            miner.device_info.make
-                        )))
-                        .align_x(iced::alignment::Horizontal::Left)
-                        .width(Length::FillPortion(2))
-                        .padding(theme::padding::XS),
-                        container(theme::typography::body(format!(
-                            "{}",
-                            miner.device_info.firmware
-                        )))
-                        .align_x(iced::alignment::Horizontal::Left)
-                        .width(Length::FillPortion(2))
-                        .padding(theme::padding::XS),
-                        container(theme::typography::body(
-                            miner.firmware_version.as_deref().unwrap_or("-")
-                        ))
-                        .align_x(iced::alignment::Horizontal::Left)
-                        .width(Length::FillPortion(2))
-                        .padding(theme::padding::XS),
+                        theme::typography::body(collapse_icon),
+                        Space::new().width(theme::spacing::SM),
+                        theme::typography::body(&group.name),
+                        Space::new().width(theme::spacing::MD),
+                        theme::typography::small(&group.network_range),
+                        theme::typography::small(format!(" (~{})", estimated_ips)),
+                        Space::new().width(Length::Fill),
+                        theme::typography::body(status_text)
                     ]
-                    .spacing(theme::spacing::SM)
                     .align_y(iced::alignment::Vertical::Center),
                 )
-                .style(theme::containers::card)
-                .padding(theme::padding::SM)
+                .style(theme::containers::header)
+                .padding([theme::padding::SM, theme::padding::MD])
                 .width(Length::Fill),
             )
             .style(button::text)
             .padding(0)
-            .on_press(MainViewMessage::OpenDeviceDetail(miner_ip))
+            .on_press(MainViewMessage::ToggleGroupCollapse(group.name.clone()))
             .width(Length::Fill);
 
-            miners_list = miners_list.push(miner_row);
+            // Miners list for this group (only if not collapsed)
+            let group_section = if is_collapsed {
+                column![group_header]
+            } else {
+                let miners_content: Element<'_, MainViewMessage> = if let Some(miners) = miners {
+                    if miners.is_empty() {
+                        container(theme::typography::tiny("No miners found"))
+                            .padding([theme::padding::XS, theme::padding::MD])
+                            .into()
+                    } else {
+                        let mut sorted_miners = miners.clone();
+                        self.sort_miners(&mut sorted_miners);
+
+                        // Table header with sortable columns
+                        let sort_arrow = |col: SortColumn| -> String {
+                            if self.sort_column == Some(col) {
+                                match self.sort_direction {
+                                    SortDirection::Ascending => " ▲".to_string(),
+                                    SortDirection::Descending => " ▼".to_string(),
+                                }
+                            } else {
+                                String::new()
+                            }
+                        };
+
+                        let table_header = container(
+                            row![
+                                container(
+                                    button(theme::typography::small(format!(
+                                        "IP{}",
+                                        sort_arrow(SortColumn::IpAddress)
+                                    )))
+                                    .style(button::text)
+                                    .padding(0)
+                                    .on_press(MainViewMessage::SortColumn(SortColumn::IpAddress))
+                                )
+                                .width(Length::FillPortion(2)),
+                                container(
+                                    button(theme::typography::small(format!(
+                                        "Model{}",
+                                        sort_arrow(SortColumn::Model)
+                                    )))
+                                    .style(button::text)
+                                    .padding(0)
+                                    .on_press(MainViewMessage::SortColumn(SortColumn::Model))
+                                )
+                                .width(Length::FillPortion(2)),
+                                container(
+                                    button(theme::typography::small(format!(
+                                        "Make{}",
+                                        sort_arrow(SortColumn::Make)
+                                    )))
+                                    .style(button::text)
+                                    .padding(0)
+                                    .on_press(MainViewMessage::SortColumn(SortColumn::Make))
+                                )
+                                .width(Length::FillPortion(1)),
+                                container(
+                                    button(theme::typography::small(format!(
+                                        "Firmware{}",
+                                        sort_arrow(SortColumn::Firmware)
+                                    )))
+                                    .style(button::text)
+                                    .padding(0)
+                                    .on_press(MainViewMessage::SortColumn(SortColumn::Firmware))
+                                )
+                                .width(Length::FillPortion(1)),
+                                container(
+                                    button(theme::typography::small(format!(
+                                        "Version{}",
+                                        sort_arrow(SortColumn::FirmwareVersion)
+                                    )))
+                                    .style(button::text)
+                                    .padding(0)
+                                    .on_press(
+                                        MainViewMessage::SortColumn(SortColumn::FirmwareVersion)
+                                    )
+                                )
+                                .width(Length::FillPortion(1)),
+                            ]
+                            .spacing(theme::spacing::XS),
+                        )
+                        .padding(theme::padding::XS);
+
+                        let mut miners_list = column![].spacing(2.0);
+
+                        for miner in sorted_miners {
+                            let miner_ip = match miner.ip {
+                                std::net::IpAddr::V4(ipv4) => ipv4,
+                                std::net::IpAddr::V6(_) => continue,
+                            };
+
+                            let miner_row = button(
+                                container(
+                                    row![
+                                        container(theme::typography::mono(miner_ip.to_string()))
+                                            .width(Length::FillPortion(2)),
+                                        container(theme::typography::mono(
+                                            format!("{}", miner.device_info.model)
+                                                .replace("Plus", "+")
+                                        ))
+                                        .width(Length::FillPortion(2)),
+                                        container(theme::typography::mono(format!(
+                                            "{}",
+                                            miner.device_info.make
+                                        )))
+                                        .width(Length::FillPortion(1)),
+                                        container(theme::typography::mono(format!(
+                                            "{}",
+                                            miner.device_info.firmware
+                                        )))
+                                        .width(Length::FillPortion(1)),
+                                        container(theme::typography::mono(
+                                            miner.firmware_version.as_deref().unwrap_or("-")
+                                        ))
+                                        .width(Length::FillPortion(1)),
+                                    ]
+                                    .spacing(theme::spacing::XS)
+                                    .align_y(iced::alignment::Vertical::Center),
+                                )
+                                .style(theme::containers::card)
+                                .padding(theme::padding::XS)
+                                .width(Length::Fill),
+                            )
+                            .style(button::text)
+                            .padding(0)
+                            .on_press(MainViewMessage::OpenDeviceDetail(miner_ip))
+                            .width(Length::Fill);
+
+                            miners_list = miners_list.push(miner_row);
+                        }
+
+                        container(column![table_header, miners_list].spacing(theme::spacing::XS))
+                            .padding([0.0, theme::padding::MD])
+                            .into()
+                    }
+                } else {
+                    container(theme::typography::tiny("Not scanned"))
+                        .padding([theme::padding::XS, theme::padding::MD])
+                        .into()
+                };
+
+                column![group_header, miners_content].spacing(theme::spacing::XS)
+            };
+
+            content = content.push(group_section);
         }
 
-        column![header, table_header, scrollable(miners_list)]
-            .spacing(theme::spacing::XS)
+        container(scrollable(content))
+            .style(theme::containers::card)
+            .padding(theme::padding::SM)
+            .width(Length::Fill)
+            .height(Length::Fill)
             .into()
     }
 

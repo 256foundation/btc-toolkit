@@ -7,7 +7,7 @@ pub fn card(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::BACKGROUND_CARD)),
         border: Border {
-            radius: 8.0.into(),
+            radius: 6.0.into(),
             width: 0.0,
             color: Color::TRANSPARENT,
         },
@@ -26,7 +26,7 @@ pub fn header(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::BACKGROUND_ELEVATED)),
         border: Border {
-            radius: 0.0.into(),
+            radius: 6.0.into(),
             width: 0.0,
             color: Color::TRANSPARENT,
         },
@@ -151,7 +151,7 @@ pub fn badge(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::SURFACE_OVERLAY_20)),
         border: Border {
-            radius: 12.0.into(),
+            radius: 6.0.into(),
             width: 1.0,
             color: colors::BORDER_DEFAULT,
         },
@@ -166,7 +166,7 @@ pub fn tooltip(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colors::BACKGROUND_ELEVATED)),
         border: Border {
-            radius: 4.0.into(),
+            radius: 6.0.into(),
             width: 1.0,
             color: colors::BORDER_STRONG,
         },
