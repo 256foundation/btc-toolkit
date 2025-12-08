@@ -201,12 +201,73 @@ fn update(state: &mut BtcToolkit, message: BtcToolkitMessage) -> Task<BtcToolkit
                     }
                     Task::none()
                 }
-                DeviceDetailMessage::Restart
-                | DeviceDetailMessage::SetPowerLimit
-                | DeviceDetailMessage::ToggleFaultLight => {
-                    // These would require implementing the control features from asic-rs
-                    // For now, just return Task::none()
-                    Task::none()
+                DeviceDetailMessage::PauseMining => {
+                    if let Page::DeviceDetail(ip) = state.current_page {
+                        // Perform pause then refetch data to update UI
+                        Task::perform(
+                            async move {
+                                let _ = network::full_fetch::pause_mining_async(ip).await;
+                                network::full_fetch::fetch_full_miner_data_async(ip).await
+                            },
+                            |result| {
+                                BtcToolkitMessage::DeviceDetail(DeviceDetailMessage::DataFetched(
+                                    result,
+                                ))
+                            },
+                        )
+                    } else {
+                        Task::none()
+                    }
+                }
+                DeviceDetailMessage::ResumeMining => {
+                    if let Page::DeviceDetail(ip) = state.current_page {
+                        // Perform resume then refetch data to update UI
+                        Task::perform(
+                            async move {
+                                let _ = network::full_fetch::resume_mining_async(ip).await;
+                                network::full_fetch::fetch_full_miner_data_async(ip).await
+                            },
+                            |result| {
+                                BtcToolkitMessage::DeviceDetail(DeviceDetailMessage::DataFetched(
+                                    result,
+                                ))
+                            },
+                        )
+                    } else {
+                        Task::none()
+                    }
+                }
+                DeviceDetailMessage::ToggleFaultLight => {
+                    if let Page::DeviceDetail(ip) = state.current_page {
+                        // Toggle fault light then refetch data to update UI
+                        Task::perform(
+                            async move {
+                                let _ = network::full_fetch::toggle_fault_light_async(ip).await;
+                                network::full_fetch::fetch_full_miner_data_async(ip).await
+                            },
+                            |result| {
+                                BtcToolkitMessage::DeviceDetail(DeviceDetailMessage::DataFetched(
+                                    result,
+                                ))
+                            },
+                        )
+                    } else {
+                        Task::none()
+                    }
+                }
+                DeviceDetailMessage::Restart => {
+                    if let Page::DeviceDetail(ip) = state.current_page {
+                        Task::perform(network::full_fetch::restart_miner_async(ip), |result| {
+                            if let Err(e) = result {
+                                eprintln!("Failed to restart miner: {}", e);
+                            }
+                            // After restart, the miner will be unavailable for a while
+                            // Navigate back to main view
+                            BtcToolkitMessage::DeviceDetail(DeviceDetailMessage::Back)
+                        })
+                    } else {
+                        Task::none()
+                    }
                 }
             }
         }

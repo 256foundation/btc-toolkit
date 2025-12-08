@@ -11,9 +11,10 @@ use std::net::IpAddr;
 pub enum DeviceDetailMessage {
     Back,
     OpenInBrowser,
-    Restart,
-    SetPowerLimit,
+    PauseMining,
+    ResumeMining,
     ToggleFaultLight,
+    Restart,
     DataFetched(Result<MinerData, FetchError>),
 }
 
@@ -190,6 +191,21 @@ impl DeviceDetailView {
             Some(theme::icons::network().into()),
             Some(DeviceDetailMessage::OpenInBrowser),
         );
+        let pause_button = secondary_button(
+            "Pause",
+            Some(theme::icons::stop().into()),
+            Some(DeviceDetailMessage::PauseMining),
+        );
+        let resume_button = secondary_button(
+            "Resume",
+            Some(theme::icons::play().into()),
+            Some(DeviceDetailMessage::ResumeMining),
+        );
+        let fault_light_button = secondary_button(
+            "Fault Light",
+            Some(theme::icons::light_bulb().into()),
+            Some(DeviceDetailMessage::ToggleFaultLight),
+        );
         let restart_button = danger_button(
             "Restart",
             Some(theme::icons::refresh().into()),
@@ -202,7 +218,14 @@ impl DeviceDetailView {
                 Space::new().width(theme::spacing::SM),
                 theme::typography::mono(format!("{}", miner.ip)),
                 Space::new().width(Length::Fill),
-                row![browser_button, restart_button].spacing(theme::spacing::XS)
+                row![
+                    pause_button,
+                    resume_button,
+                    fault_light_button,
+                    browser_button,
+                    restart_button
+                ]
+                .spacing(theme::spacing::XS)
             ]
             .align_y(iced::Alignment::Center),
         )
