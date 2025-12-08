@@ -1,7 +1,6 @@
 mod config;
 mod device_detail_view;
 mod errors;
-mod health;
 mod main_view;
 mod network;
 mod network_config;

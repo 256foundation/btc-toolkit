@@ -1,10 +1,10 @@
 use crate::errors::FetchError;
-use crate::health::HealthReport;
 use crate::theme;
 use crate::ui_helpers::{danger_button, format_duration, secondary_button};
 use asic_rs::data::miner::MinerData;
+use iced::Element;
+use iced::Length;
 use iced::widget::{Space, column, container, row, scrollable, text};
-use iced::{Color, Element, Length};
 use std::net::IpAddr;
 
 #[derive(Debug, Clone)]
@@ -19,10 +19,7 @@ pub enum DeviceDetailMessage {
 
 pub enum DeviceDetailState {
     Loading(IpAddr),
-    Loaded {
-        miner: MinerData,
-        health_report: HealthReport,
-    },
+    Loaded { miner: MinerData },
     Error(String),
 }
 
@@ -38,24 +35,14 @@ impl DeviceDetailView {
     }
 
     pub fn new_loaded(miner: MinerData) -> Self {
-        let health_report = HealthReport::from_miner_data(&miner);
         Self {
-            state: DeviceDetailState::Loaded {
-                miner,
-                health_report,
-            },
+            state: DeviceDetailState::Loaded { miner },
         }
     }
 
     pub fn update_with_data(&mut self, result: Result<MinerData, FetchError>) {
         self.state = match result {
-            Ok(miner) => {
-                let health_report = HealthReport::from_miner_data(&miner);
-                DeviceDetailState::Loaded {
-                    miner,
-                    health_report,
-                }
-            }
+            Ok(miner) => DeviceDetailState::Loaded { miner },
             Err(error) => DeviceDetailState::Error(error.to_string()),
         };
     }
@@ -88,19 +75,25 @@ impl DeviceDetailView {
                     .into()
             }
 
-            DeviceDetailState::Loaded {
-                miner,
-                health_report,
-            } => {
+            DeviceDetailState::Loaded { miner } => {
                 let content = scrollable(
                     column![
                         self.view_header(miner),
-                        self.view_health_section(health_report, miner),
-                        self.view_hardware_section(miner),
-                        self.view_performance_section(miner),
+                        // Hardware + Performance side by side
+                        row![
+                            self.view_hardware_section(miner),
+                            self.view_performance_section(miner),
+                        ]
+                        .spacing(theme::spacing::SM),
+                        // Hashboards full width
                         self.view_hashboards_section(miner),
-                        self.view_cooling_section(miner),
-                        self.view_power_section(miner),
+                        // Cooling + Power side by side
+                        row![
+                            self.view_cooling_section(miner),
+                            self.view_power_section(miner),
+                        ]
+                        .spacing(theme::spacing::SM),
+                        // Pools full width
                         self.view_pools_section(miner),
                         if !miner.messages.is_empty() {
                             self.view_messages_section(miner)
@@ -108,8 +101,8 @@ impl DeviceDetailView {
                             column![].into()
                         },
                     ]
-                    .spacing(theme::spacing::LG)
-                    .padding(theme::padding::LG),
+                    .spacing(theme::spacing::SM)
+                    .padding(theme::padding::SM),
                 );
 
                 container(content)
@@ -147,8 +140,6 @@ impl DeviceDetailView {
     }
 
     fn view_loading_header(&self, ip: &IpAddr) -> Element<'_, DeviceDetailMessage> {
-        let title = theme::typography::title("Loading Device Details");
-        let subtitle = theme::typography::small(format!("IP: {}", ip));
         let back_button = secondary_button(
             "Back",
             Some(theme::icons::back().into()),
@@ -157,14 +148,15 @@ impl DeviceDetailView {
 
         container(
             row![
-                column![title, subtitle].spacing(theme::spacing::XS),
+                back_button,
+                Space::new().width(theme::spacing::SM),
+                theme::typography::mono(format!("{}", ip)),
                 Space::new().width(Length::Fill),
-                back_button
             ]
             .align_y(iced::Alignment::Center),
         )
         .style(theme::containers::header)
-        .padding(theme::padding::MD)
+        .padding(theme::padding::SM)
         .width(Length::Fill)
         .into()
     }
@@ -188,13 +180,6 @@ impl DeviceDetailView {
     }
 
     fn view_header(&self, miner: &MinerData) -> Element<'_, DeviceDetailMessage> {
-        let title = theme::typography::title(format!(
-            "{} {}",
-            miner.device_info.make, miner.device_info.model
-        ));
-
-        let subtitle = theme::typography::small(format!("IP: {}", miner.ip));
-
         let back_button = secondary_button(
             "Back",
             Some(theme::icons::back().into()),
@@ -213,66 +198,18 @@ impl DeviceDetailView {
 
         container(
             row![
-                column![title, subtitle].spacing(theme::spacing::XS),
+                back_button,
+                Space::new().width(theme::spacing::SM),
+                theme::typography::mono(format!("{}", miner.ip)),
                 Space::new().width(Length::Fill),
-                row![back_button, browser_button, restart_button].spacing(theme::spacing::SM)
+                row![browser_button, restart_button].spacing(theme::spacing::XS)
             ]
             .align_y(iced::Alignment::Center),
         )
         .style(theme::containers::header)
-        .padding(theme::padding::MD)
+        .padding(theme::padding::SM)
         .width(Length::Fill)
         .into()
-    }
-
-    fn view_health_section<'a>(
-        &self,
-        health_report: &'a HealthReport,
-        _miner: &MinerData,
-    ) -> Element<'a, DeviceDetailMessage> {
-        let status_color = health_report.status.color();
-        let status_badge = container(
-            row![
-                theme::icons::icon_size(health_report.status.svg_icon(), 20.0),
-                text(health_report.status.label()).size(16)
-            ]
-            .spacing(theme::spacing::SM)
-            .align_y(iced::Alignment::Center),
-        )
-        .padding(theme::padding::SM)
-        .style(move |_theme: &iced::Theme| container::Style {
-            background: Some(iced::Background::Color(status_color)),
-            text_color: Some(Color::WHITE),
-            border: iced::Border {
-                radius: 4.0.into(),
-                ..Default::default()
-            },
-            ..container::Style::default()
-        });
-
-        let mut items = column![theme::typography::heading("Health Status"), status_badge,]
-            .spacing(theme::spacing::SM);
-
-        // Show critical issues
-        for issue in health_report.critical_issues() {
-            items = items.push(
-                row![theme::icons::error(), text(&issue.description),].spacing(theme::spacing::SM),
-            );
-        }
-
-        // Show warnings
-        for issue in health_report.warning_issues() {
-            items = items.push(
-                row![theme::icons::warning(), text(&issue.description),]
-                    .spacing(theme::spacing::SM),
-            );
-        }
-
-        container(items)
-            .padding(theme::padding::MD)
-            .style(theme::containers::card)
-            .width(Length::Fill)
-            .into()
     }
 
     fn view_hardware_section(&self, miner: &MinerData) -> Element<'_, DeviceDetailMessage> {
@@ -324,11 +261,18 @@ impl DeviceDetailView {
                     .map(|u| format_duration(u.as_secs()))
                     .unwrap_or_else(|| "N/A".to_string())
             ),
+            self.info_row(
+                "Fault Light",
+                miner
+                    .light_flashing
+                    .map(|l| if l { "Flashing" } else { "Off" }.to_string())
+                    .unwrap_or_else(|| "N/A".to_string())
+            ),
         ]
-        .spacing(theme::spacing::SM);
+        .spacing(theme::spacing::XS);
 
         container(items)
-            .padding(theme::padding::MD)
+            .padding(theme::padding::SM)
             .style(theme::containers::card)
             .width(Length::Fill)
             .into()
@@ -376,22 +320,33 @@ impl DeviceDetailView {
             self.info_row("Efficiency", hashrate_percentage),
             self.info_row("Power Efficiency", efficiency_str),
         ]
-        .spacing(theme::spacing::SM);
+        .spacing(theme::spacing::XS);
 
         container(items)
-            .padding(theme::padding::MD)
+            .padding(theme::padding::SM)
             .style(theme::containers::card)
             .width(Length::Fill)
             .into()
     }
 
     fn view_hashboards_section(&self, miner: &MinerData) -> Element<'_, DeviceDetailMessage> {
-        let mut items =
-            column![theme::typography::heading("Hashboards"),].spacing(theme::spacing::SM);
+        let board_count = format!(
+            "{}/{}",
+            miner.hashboards.len(),
+            miner.expected_hashboards.unwrap_or(0)
+        );
+
+        let mut items = column![
+            theme::typography::heading("Hashboards"),
+            self.info_row("Detected", board_count),
+        ]
+        .spacing(theme::spacing::XS);
 
         for (idx, board) in miner.hashboards.iter().enumerate() {
+            let board_label = format!("Board {}", board.position);
+
             let board_info = column![
-                text(format!("Board {}", idx + 1)).size(14),
+                text(board_label).size(14),
                 self.info_row(
                     "Working Chips",
                     board
@@ -400,7 +355,7 @@ impl DeviceDetailView {
                         .unwrap_or_else(|| "N/A".to_string())
                 ),
                 self.info_row(
-                    "Temperature",
+                    "Board Temp",
                     board
                         .board_temperature
                         .map(|t| format!("{:.1}°C", t.as_celsius()))
@@ -416,6 +371,8 @@ impl DeviceDetailView {
                 ),
             ]
             .spacing(theme::spacing::XS);
+
+            let _ = idx; // silence unused warning
 
             items = items.push(
                 container(board_info)
@@ -444,27 +401,15 @@ impl DeviceDetailView {
         items = items.push(self.info_row("Total Working Chips", total_chips_str));
 
         container(items)
-            .padding(theme::padding::MD)
+            .padding(theme::padding::SM)
             .style(theme::containers::card)
             .width(Length::Fill)
             .into()
     }
 
     fn view_cooling_section(&self, miner: &MinerData) -> Element<'_, DeviceDetailMessage> {
-        let mut items = column![theme::typography::heading("Cooling"),].spacing(theme::spacing::SM);
-
-        for (idx, fan) in miner.fans.iter().enumerate() {
-            items = items.push(
-                self.info_row(
-                    format!("Fan {}", idx + 1),
-                    fan.rpm
-                        .map(|rpm| format!("{:.0} RPM", rpm.as_rpm()))
-                        .unwrap_or_else(|| "N/A".to_string()),
-                ),
-            );
-        }
-
-        items = items.push(
+        let mut items = column![
+            theme::typography::heading("Cooling"),
             self.info_row(
                 "Average Temperature",
                 miner
@@ -472,7 +417,8 @@ impl DeviceDetailView {
                     .map(|t| format!("{:.1}°C", t.as_celsius()))
                     .unwrap_or_else(|| "N/A".to_string()),
             ),
-        );
+        ]
+        .spacing(theme::spacing::XS);
 
         if let Some(fluid_temp) = miner.fluid_temperature {
             items = items.push(self.info_row(
@@ -481,15 +427,39 @@ impl DeviceDetailView {
             ));
         }
 
+        // Only show fans section if there are fans (skip for immersion/hydro)
+        if !miner.fans.is_empty() {
+            let fan_count = format!(
+                "{}/{}",
+                miner.fans.len(),
+                miner.expected_fans.unwrap_or(miner.fans.len() as u8)
+            );
+            items = items.push(self.info_row("Fans", fan_count));
+
+            for (idx, fan) in miner.fans.iter().enumerate() {
+                let fan_label = format!("Fan {}", fan.position);
+                let _ = idx; // silence unused warning
+
+                items = items.push(
+                    self.info_row(
+                        fan_label,
+                        fan.rpm
+                            .map(|rpm| format!("{:.0} RPM", rpm.as_rpm()))
+                            .unwrap_or_else(|| "N/A".to_string()),
+                    ),
+                );
+            }
+        }
+
         container(items)
-            .padding(theme::padding::MD)
+            .padding(theme::padding::SM)
             .style(theme::containers::card)
             .width(Length::Fill)
             .into()
     }
 
     fn view_power_section(&self, miner: &MinerData) -> Element<'_, DeviceDetailMessage> {
-        let mut items = column![theme::typography::heading("Power"),].spacing(theme::spacing::SM);
+        let mut items = column![theme::typography::heading("Power"),].spacing(theme::spacing::XS);
 
         items = items.push(
             self.info_row(
@@ -522,7 +492,7 @@ impl DeviceDetailView {
         );
 
         container(items)
-            .padding(theme::padding::MD)
+            .padding(theme::padding::SM)
             .style(theme::containers::card)
             .width(Length::Fill)
             .into()
@@ -530,7 +500,7 @@ impl DeviceDetailView {
 
     fn view_pools_section(&self, miner: &MinerData) -> Element<'_, DeviceDetailMessage> {
         let mut items =
-            column![theme::typography::heading("Mining Pools"),].spacing(theme::spacing::SM);
+            column![theme::typography::heading("Mining Pools"),].spacing(theme::spacing::XS);
 
         for (idx, pool) in miner.pools.iter().enumerate() {
             let pool_info = column![
@@ -581,7 +551,7 @@ impl DeviceDetailView {
         }
 
         container(items)
-            .padding(theme::padding::MD)
+            .padding(theme::padding::SM)
             .style(theme::containers::card)
             .width(Length::Fill)
             .into()
@@ -589,16 +559,16 @@ impl DeviceDetailView {
 
     fn view_messages_section<'a>(&self, miner: &'a MinerData) -> Element<'a, DeviceDetailMessage> {
         let mut items =
-            column![theme::typography::heading("Messages & Alerts"),].spacing(theme::spacing::SM);
+            column![theme::typography::heading("Messages & Alerts"),].spacing(theme::spacing::XS);
 
         for msg in &miner.messages {
             items = items.push(
-                row![theme::icons::warning(), text(&msg.message),].spacing(theme::spacing::SM),
+                row![theme::icons::warning(), text(&msg.message),].spacing(theme::spacing::XS),
             );
         }
 
         container(items)
-            .padding(theme::padding::MD)
+            .padding(theme::padding::SM)
             .style(theme::containers::card)
             .width(Length::Fill)
             .into()
@@ -619,7 +589,7 @@ impl DeviceDetailView {
                 }),
             text(value.to_string()).width(Length::FillPortion(2)),
         ]
-        .spacing(theme::spacing::SM)
+        .spacing(theme::spacing::XS)
         .into()
     }
 }
