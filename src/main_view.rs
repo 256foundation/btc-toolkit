@@ -562,39 +562,33 @@ impl MainView {
                             };
 
                             let miner_row = button(
-                                container(
-                                    row![
-                                        container(theme::typography::mono(miner_ip.to_string()))
-                                            .width(Length::FillPortion(2)),
-                                        container(theme::typography::mono(
-                                            format!("{}", miner.device_info.model)
-                                                .replace("Plus", "+")
-                                        ))
+                                row![
+                                    container(theme::typography::mono(miner_ip.to_string()))
                                         .width(Length::FillPortion(2)),
-                                        container(theme::typography::mono(format!(
-                                            "{}",
-                                            miner.device_info.make
-                                        )))
-                                        .width(Length::FillPortion(1)),
-                                        container(theme::typography::mono(format!(
-                                            "{}",
-                                            miner.device_info.firmware
-                                        )))
-                                        .width(Length::FillPortion(1)),
-                                        container(theme::typography::mono(
-                                            miner.firmware_version.as_deref().unwrap_or("-")
-                                        ))
-                                        .width(Length::FillPortion(1)),
-                                    ]
-                                    .spacing(theme::spacing::XS)
-                                    .align_y(iced::alignment::Vertical::Center),
-                                )
-                                .style(theme::containers::card)
-                                .padding(theme::padding::XS)
-                                .width(Length::Fill),
+                                    container(theme::typography::mono(
+                                        format!("{}", miner.device_info.model).replace("Plus", "+")
+                                    ))
+                                    .width(Length::FillPortion(2)),
+                                    container(theme::typography::mono(format!(
+                                        "{}",
+                                        miner.device_info.make
+                                    )))
+                                    .width(Length::FillPortion(1)),
+                                    container(theme::typography::mono(format!(
+                                        "{}",
+                                        miner.device_info.firmware
+                                    )))
+                                    .width(Length::FillPortion(1)),
+                                    container(theme::typography::mono(
+                                        miner.firmware_version.as_deref().unwrap_or("-")
+                                    ))
+                                    .width(Length::FillPortion(1)),
+                                ]
+                                .spacing(theme::spacing::XS)
+                                .align_y(iced::alignment::Vertical::Center),
                             )
-                            .style(button::text)
-                            .padding(0)
+                            .style(theme::buttons::table_row)
+                            .padding(theme::padding::XS)
                             .on_press(MainViewMessage::OpenDeviceDetail(miner_ip))
                             .width(Length::Fill);
 

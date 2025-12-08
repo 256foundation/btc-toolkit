@@ -21,6 +21,7 @@ pub(crate) fn theme() -> Theme {
     industrial_theme()
 }
 
+pub mod buttons;
 pub mod colors;
 pub mod containers;
 pub mod icons;
