@@ -1,3 +1,6 @@
+// don't open console on windows builds
+#![windows_subsystem = "windows"]
+
 mod config;
 mod device_detail_view;
 mod errors;
